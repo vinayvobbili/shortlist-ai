@@ -1,0 +1,17 @@
+{
+  "senior_data_engineer_gcp": {
+    "c16_amara_nwosu": 3,
+    "c06_rahul_menon": 3,
+    "c13_oliver_grant": 2,
+    "c14_hannah_lee": 2,
+    "c15_carlos_diaz": 1,
+    "c03_wei_zhang": 1,
+    "c05_sam_okafor": 1
+  },
+  "incident_response_engineer": {
+    "c01_priya_raman": 3,
+    "c18_nadia_haddad": 2,
+    "c17_ben_carter": 2,
+    "c03_wei_zhang": 0
+  }
+}

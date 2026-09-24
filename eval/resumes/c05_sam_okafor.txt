@@ -1,0 +1,12 @@
+Sam Okafor
+Atlanta, GA · sam.okafor@example.edu · 404-555-0123 · samokafor.dev
+SUMMARY
+Recent data science graduate looking for an analyst role.
+EXPERIENCE
+Data Analyst Intern — Coho Winery, Atlanta, GA (Jun–Aug 2024)
+• Built a Tableau dashboard tracking weekly distributor sales
+• Wrote SQL queries to clean 3 years of order data
+EDUCATION
+Georgia State University | B.S. Data Science | Expected May 2025
+SKILLS
+Python (pandas, scikit-learn), SQL, Tableau, R

@@ -1,0 +1,19 @@
+David Kim
+Portland, OR · dkim.codes@example.com · (503) 555-0171 · github.com/dkimcodes
+SUMMARY
+Former chef turned full-stack developer after a coding bootcamp.
+EXPERIENCE
+Junior Full-Stack Developer — Lucerne Publishing, Portland, OR (Sep 2023 – current)
+• Ship features in a React + Node.js monorepo
+• Wrote Cypress end-to-end tests that caught 12 release blockers
+Sous Chef — The Phoenix Bistro, Portland, OR (3/2014 – 11/2022)
+• Ran a 10-person kitchen line
+• Managed $15K/month in food inventory
+EDUCATION
+Epicodus coding bootcamp — Web Development certificate, 2023
+SKILLS
+JavaScript, TypeScript, React, Node.js, PostgreSQL, JS testing (Jest, Cypress)
+CERTIFICATIONS
+ServSafe Manager
+LANGUAGES
+English, Korean

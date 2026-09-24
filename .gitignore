@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.shortlist-cache/
+# Never commit real candidate data. Put it somewhere outside the repo.
+private/
+*.local.*
