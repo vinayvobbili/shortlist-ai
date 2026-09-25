@@ -13,5 +13,35 @@
     "c18_nadia_haddad": 2,
     "c17_ben_carter": 2,
     "c03_wei_zhang": 0
+  },
+  "data_engineer_aws": {
+    "c13_oliver_grant": 3,
+    "c16_amara_nwosu": 2,
+    "c06_rahul_menon": 2,
+    "c14_hannah_lee": 1,
+    "c15_carlos_diaz": 1,
+    "c03_wei_zhang": 1,
+    "c05_sam_okafor": 1
+  },
+  "data_analyst": {
+    "c05_sam_okafor": 3,
+    "c14_hannah_lee": 3,
+    "c15_carlos_diaz": 3,
+    "c13_oliver_grant": 2,
+    "c16_amara_nwosu": 2,
+    "c06_rahul_menon": 2,
+    "c03_wei_zhang": 1,
+    "c08_jordan_blake": 1
+  },
+  "frontend_engineer": {
+    "c12_david_kim": 3,
+    "c11_lina_haddad": 1,
+    "c03_wei_zhang": 1
+  },
+  "cloud_security_engineer": {
+    "c18_nadia_haddad": 3,
+    "c01_priya_raman": 2,
+    "c17_ben_carter": 1,
+    "c13_oliver_grant": 1
   }
 }

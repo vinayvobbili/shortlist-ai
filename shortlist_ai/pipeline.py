@@ -69,3 +69,59 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
 
     results.sort(key=lambda r: (-r.score, -r.must_haves_met, r.candidate_id))
     return Ranking(job, results, not_assessed, errors)
+
+
+def job_order(job_id: str, result: CandidateResult) -> tuple:
+    """Sort key for jobs, best fit first. Must-haves compared as a share: jobs list different numbers."""
+    return (-result.score, -result.must_haves_met / max(1, result.must_haves_total), job_id)
+
+
+@dataclass
+class JobMatch:
+    job_id: str
+    job: JobSpec
+    result: CandidateResult
+
+    @property
+    def gaps(self) -> list[str]:
+        """Must-haves not met, as the job describes them: what a candidate would need to close."""
+        return [next(r.description for r in self.job.requirements if r.id == s.requirement_id)
+                for s in self.result.requirements if s.kind == "must_have" and s.verdict != "met"]
+
+
+@dataclass
+class JobMatches:
+    resume_file: str
+    matches: list[JobMatch]                                      # best fit first
+    errors: dict[str, str] = field(default_factory=dict)        # job -> error message
+    flags: list[str] = field(default_factory=list)              # about the resume itself
+
+
+def match_jobs(resume_path: Path, jobs: dict[str, JobSpec], backend: Backend, *, cache: Cache | None = None,
+               workers: int = 1, progress=None) -> JobMatches:
+    """The reverse of rank(): one resume, many jobs, best fit first.
+
+    Uses the same blind profile and scorer as rank(), so a (resume, job) score means the same
+    thing in both directions. Scores are comparable across jobs because each is the weighted
+    share of that job's requirements met; ties go to the job with more must-haves met.
+    """
+    progress = progress or (lambda msg: None)
+    progress(f"extract  {resume_path.stem}")
+    extracted = extract_resume(resume_path, backend, cache)
+    profile = profile_for(extracted.resume)
+    errors: dict[str, str] = {}
+
+    def work(item):
+        job_id, job = item
+        progress(f"score    {job_id}")
+        try:
+            return JobMatch(job_id, job, score_candidate(resume_path.stem, resume_path.name, job, profile, backend))
+        except Exception as e:
+            errors[job_id] = f"{type(e).__name__}: {e}"
+            return None
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        matches = [m for m in pool.map(work, jobs.items()) if m is not None]
+
+    matches.sort(key=lambda m: job_order(m.job_id, m.result))
+    return JobMatches(resume_path.name, matches, errors, extracted.flags)

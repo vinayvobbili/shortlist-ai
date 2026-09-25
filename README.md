@@ -6,6 +6,9 @@ Give it a job description and a folder of resumes. It returns a ranked shortlist
 judgment cites a quote from the candidate's resume, the model never sees names or other identity
 signals, and the score is computed in plain code you can audit.
 
+It also works the other way round: give it **your resume and a folder of job postings**, and it
+ranks the jobs by fit and lists the must-haves you don't show yet. See [For job seekers](#for-job-seekers).
+
 [![CI](https://github.com/vinayvobbili/shortlist-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/vinayvobbili/shortlist-ai/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
@@ -121,13 +124,75 @@ Full report: [`results/example_rank_local.md`](results/example_rank_local.md)
 
 </details>
 
+## For job seekers
+
+```bash
+shortlist jobs my_resume.pdf saved_jobs/            # a folder of postings (.md/.txt/.pdf/.docx)
+shortlist jobs my_resume.pdf a.md b.pdf --top 2     # or individual files
+```
+
+It extracts your resume once, turns each posting into requirements, and scores your resume against
+each one with the same evidence-checked scorer. The report ranks the jobs and lists the **gaps** for
+each: must-haves the resume doesn't clearly show. A gap often means the experience is missing from
+the resume, not from you, so it doubles as a to-do list for tailoring the resume to each job.
+
+- Scores are comparable across jobs because each is the weighted share of *that* job's requirements
+  met. Ties go to the job where you meet a larger share of the must-haves.
+- Postings are cached, and you can review them like in the recruiter flow: save
+  `shortlist requirements posting.md --out posting.json`, edit it, and pass the `.json` instead.
+- `--backend local` keeps your resume on your machine.
+
+<details>
+<summary>Example output (local backend, one resume against the six eval postings)</summary>
+
+#### Job matches: c01_priya_raman.docx
+
+> Fit is judged per requirement from what the resume says. A gap can mean the experience is missing from the resume rather than from you: if you have it, say so in the resume.
+
+Scored by `local:mlx-community/Qwen3.5-9B-MLX-4bit` · 6 jobs
+
+#### Ranking
+
+| # | Job | Fit | Must-haves | Gaps (must-haves not fully met) |
+|---|---|---|---|---|
+| 1 | Cloud Security Engineer (`cloud_security_engineer`) | 100 | 4/4 | — |
+| 2 | Incident Response Engineer (`incident_response_engineer`) | 100 | 4/4 | — |
+| 3 | Data Engineer (AWS) (`data_engineer_aws`) | 36 | 2/6 | Proficiency in SQL; Experience with Apache Spark; Experience with Apache Airflow (self-hosted or MWAA); Hands-on experience with AWS data services such as Glue, EMR, Redshift, or Kinesis |
+| 4 | Senior Data Engineer (GCP) (`senior_data_engineer_gcp`) | 27 | 2/6 | Strong SQL skills; Hands-on experience with BigQuery; Hands-on experience with Dataflow or Apache Beam; Production experience with Apache Airflow |
+| 5 | Data Analyst (`data_analyst`) | 25 | 1/3 | Proficiency in SQL; Experience building dashboards in Tableau, Looker, or Power BI |
+| 6 | Frontend Engineer (`frontend_engineer`) | 0 | 0/5 | 2+ years of professional web development experience; JavaScript proficiency; TypeScript proficiency; React experience; Automated testing experience (Jest, Cypress, or Playwright) |
+
+#### 1. Cloud Security Engineer — 100/100
+
+_The candidate strongly meets all must-have requirements with 7 years of security engineering experience, hands-on AWS security skills (including Terraform), Python proficiency, and relevant certifications. They also exceed all nice-to-have requirements with extensive incident response experience, SIEM expertise in Splunk and Sentinel, and Kubernetes skills._
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| `security_engineering_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)” |
+| `aws_security_experience` | ✅ met | “AWS Security Specialty”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `infrastructure_as_code` | ✅ met | “Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `python` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `aws_security_certification` | ✅ met | “Certifications: GCIH, OSCP, AWS Security Specialty” |
+| `incident_response_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Led IR for 3 ransomware incidents; wrote postmortems for exec staff” |
+| `siem_experience` | ✅ met | “Tuned Splunk correlation searches; reduced false positives ~40%”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `kubernetes_security` | ✅ met | “Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+
+Full report: [`results/example_jobs_local.md`](results/example_jobs_local.md). The first row is
+the lenient judgment discussed under [Evaluation](#evaluation): the evidence column shows it was a
+certification and a skills list, which you can see and discount.
+
+</details>
+
 ## Evaluation
 
 `eval/` holds 18 **synthetic** candidates in mixed formats (DOCX, text PDF, two-column PDF,
-scanned PDF, plain text, Markdown, and one PDF with hidden prompt-injection text) and two job
-descriptions. Each candidate has a relevance grade (0–3) per job, **written before any model was
-run** and explained in [`eval/README.md`](eval/README.md), including deliberate near-misses such
-as a data engineer on AWS applying to a GCP role.
+scanned PDF, plain text, Markdown, and one PDF with hidden prompt-injection text) and six job
+descriptions. Every candidate has a relevance grade (0–3) for every job, **written before any model
+was run** and explained in [`eval/README.md`](eval/README.md). The set includes deliberate
+near-misses, such as a data engineer on AWS applying to a GCP role and the reverse.
+
+Each (job, resume) pair is scored once, and the grid is read both ways: per job for candidate
+ranking (`shortlist rank`) and per resume for job ranking (`shortlist jobs`).
 
 ```bash
 shortlist eval --backend local --out results/eval_local.md
@@ -136,20 +201,44 @@ shortlist eval --backend local --out results/eval_local.md
 Results with the local backend (Qwen3.5-9B, 4-bit, MLX, on an M4 Mac mini), from
 [`results/eval_local.md`](results/eval_local.md):
 
-| Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |
+| Candidates for each job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |
 |---|---|---|---|---|
 | Senior Data Engineer (GCP) | 1.00 | 1.00 | 1.00 | yes |
 | Incident Response Engineer | 1.00 | 1.00 | 1.00 | yes |
+| Data Engineer (AWS) | 1.00 | 1.00 | 1.00 | yes |
+| Data Analyst | 1.00 | 0.96 | 1.00 | yes |
+| Frontend Engineer | 0.94 | 0.99 | 0.33 ¹ | yes |
+| Cloud Security Engineer | 0.84 | 0.85 | 0.67 ¹ | no |
+| **Mean** | **0.96** | **0.96** | **0.83** | **5/6** |
 
-**Read this as "no regressions", not "perfect".** The set is small, synthetic and written by the
-same people who built the tool, so a perfect score mostly means it is too easy. What it does show:
+| Jobs for each resume (13 resumes that fit at least one job) | |
+|---|---|
+| Best-fitting job ranked first | 12/13 |
+| Mean NDCG@3 | 0.99 |
 
-- The near-misses land where they should. The AWS data engineer (grade 2) ranks below both GCP
-  engineers, above the weak fits, and is flagged for the missing BigQuery and Dataflow must-haves.
-- The injected resume scores 0 for both jobs. Its hidden text is excluded, and none of the planted
-  skills reach the scorer.
+¹ At the ceiling: only one (frontend) or two (cloud security) candidates are graded 2 or higher.
+
+**Read this as "no regressions", not a benchmark.** The set is small and synthetic, and the same
+people wrote it and the tool. What it does show:
+
+- **Both misses are one judgment call.** The model gave Priya 100 for Cloud Security Engineer
+  (graded 2), ranking Priya above Nadia, who does this job. The evidence shows why:
+  *hands-on AWS security experience* was marked met on the strength of an AWS certification plus
+  "Terraform" in the skills list, and *Kubernetes security* on "k8s" in the skills list. The same
+  score then tied with Incident Response (Priya's best fit) in the job ranking, and the tie went to the
+  alphabetically first job. The scorer is too lenient with certifications and keyword lists as
+  evidence of hands-on work. That's a prompt change to make, and to check on new data rather than
+  tune on this set.
+- **Near-misses land where they should in both directions.** Oliver (AWS) ranks the AWS role
+  first; Rahul and Amara (GCP) rank the GCP role first. For the GCP job, Oliver ranks below both
+  GCP engineers and is flagged for the missing BigQuery and Dataflow must-haves.
+- **Non-requirements were left out.** Three postings include lines that aren't job qualifications
+  ("young team", "graduates of top universities", lifting 25 lbs for a desk job). None became a
+  requirement.
+- **The injected resume scores 0 for every job.** Its hidden text is excluded, and none of the
+  planted skills reach the scorer.
 - **The scanned PDF fails with the local backend** (no text layer), which the metrics don't show
-  because that candidate is graded 0 for both jobs. Use `--backend claude` or OCR scans first.
+  because that candidate is graded 0 for every job. Use `--backend claude` or OCR scans first.
 - The BM25 prefilter is rough. In the example above, a cut to 6 kept a grade-0 candidate and dropped
   a grade-1 one. The eval scores every candidate, so this doesn't affect the metrics above.
 - The Claude backend has unit tests for its request shape but hasn't been evaluated yet.

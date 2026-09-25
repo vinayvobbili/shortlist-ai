@@ -1,4 +1,5 @@
 import json
+import re
 
 import anthropic
 import httpx2
@@ -6,7 +7,7 @@ import httpx2
 from shortlist_ai.backends import ClaudeBackend
 from shortlist_ai.cli import main
 from shortlist_ai.extract import Cache
-from shortlist_ai.pipeline import rank
+from shortlist_ai.pipeline import match_jobs, rank
 from shortlist_ai.report import to_json, to_markdown
 from shortlist_ai.schema import (CandidateAssessment, JobSpec, Requirement, RequirementAssessment, Resume)
 
@@ -38,9 +39,9 @@ class FakeBackend:
             return JOB
         skills_line = next(l for l in text.splitlines() if l.startswith("Skills:"))
         out = []
-        for req in JOB.requirements:
-            hit = req.description.lower() in skills_line.lower()
-            out.append(RequirementAssessment(requirement_id=req.id, verdict="met" if hit else "not_met",
+        for req_id, description in re.findall(r"^- id=(\S+) \[\w+\]: (.+)$", text, re.M):
+            hit = description.lower() in skills_line.lower()
+            out.append(RequirementAssessment(requirement_id=req_id, verdict="met" if hit else "not_met",
                                              evidence=[skills_line] if hit else [], reasoning="fake"))
         return CandidateAssessment(assessments=out, summary="fake summary")
 
@@ -175,3 +176,37 @@ def test_ungrounded_skills_are_removed_and_flagged(tmp_path):
     assert result.requirements[1].verdict == "not_met"  # BigQuery never reached the scorer
     assert any("removed: BigQuery" in f for f in result.flags)
     assert any("removed: CISSP" in f for f in result.flags)
+
+
+FRONTEND = JobSpec(title="Frontend Engineer", requirements=[
+    Requirement(id="react", description="React", kind="must_have"),
+    Requirement(id="python", description="Python", kind="nice_to_have"),
+])
+PYTHON_ONLY = JobSpec(title="Python Developer", requirements=[
+    Requirement(id="python", description="Python", kind="must_have"),
+])
+
+
+def test_match_jobs_ranks_jobs_for_one_resume(tmp_path):
+    write(tmp_path, "alice", "Python, BigQuery")
+    backend = FakeBackend()
+    matches = match_jobs(tmp_path / "alice.txt", {"de": JOB, "fe": FRONTEND, "py": PYTHON_ONLY}, backend)
+    assert [m.job_id for m in matches.matches] == ["py", "de", "fe"]
+    assert [m.result.score for m in matches.matches] == [100.0, round(100 * 6 / 7, 1), 25.0]
+    assert matches.matches[1].gaps == []            # Spark is only nice-to-have
+    assert matches.matches[2].gaps == ["React"]
+    assert backend.calls.count("Resume") == 1       # extracted once, scored per job
+
+
+def test_cli_jobs_accepts_reviewed_requirements(tmp_path, monkeypatch, capsys):
+    import shortlist_ai.cli as cli
+    write(tmp_path, "alice", "Python")
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    (jobs / "fe.json").write_text(FRONTEND.model_dump_json())
+    (jobs / "py.json").write_text(PYTHON_ONLY.model_dump_json())
+    monkeypatch.setattr(cli, "get_backend", lambda name, model: FakeBackend())
+    main(["jobs", str(tmp_path / "alice.txt"), str(jobs), "--no-cache", "--format", "json"])
+    out = json.loads(capsys.readouterr().out)
+    assert [m["job_id"] for m in out["matches"]] == ["py", "fe"]
+    assert out["matches"][1]["gaps"] == ["React"]

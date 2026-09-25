@@ -70,6 +70,43 @@ def cmd_rank(args, backend, cache):
     _cost_note(backend)
 
 
+def _job_paths(inputs: list[Path]) -> list[Path]:
+    """Job descriptions and/or reviewed requirements files (.json), given as files or folders."""
+    kinds = SUPPORTED | {".json"}
+    paths = []
+    for p in inputs:
+        if p.is_dir():
+            paths += sorted(q for q in p.iterdir() if q.suffix.lower() in kinds and not q.name.startswith("."))
+        else:
+            paths.append(p)
+    if not paths:
+        raise SystemExit("No job descriptions found.")
+    stems = [p.stem for p in paths]
+    if len(stems) != len(set(stems)):
+        raise SystemExit("Two job files share a name (e.g. role.md and role.json); keep one per job.")
+    return paths
+
+
+def cmd_jobs(args, backend, cache):
+    from .pipeline import match_jobs
+    from .report import jobs_to_json, jobs_to_markdown
+
+    jobs, failed = {}, {}
+    for p in _job_paths(args.jobs):
+        _progress(f"job      {p.stem}")
+        try:
+            jobs[p.stem] = load_job_spec(p) if p.suffix.lower() == ".json" else extract_job(p, backend, cache)
+        except Exception as e:
+            failed[p.stem] = f"{type(e).__name__}: {e}"
+    matches = match_jobs(args.resume, jobs, backend, cache=cache, workers=args.workers, progress=_progress)
+    matches.errors.update(failed)
+    if args.format == "json":
+        _write(jobs_to_json(matches), args.out)
+    else:
+        _write(jobs_to_markdown(matches, args.top, _backend_desc(backend)), args.out)
+    _cost_note(backend)
+
+
 def cmd_fairness(args, backend, cache):
     from .fairness import leak_check, measure_sensitivity
 
@@ -114,8 +151,8 @@ def cmd_fairness(args, backend, cache):
 def cmd_eval(args, backend, cache):
     from .evaluate import eval_report, run_eval
 
-    evals = run_eval(args.eval_dir, backend, cache, progress=_progress)
-    _write(eval_report(evals, _backend_desc(backend)), args.out)
+    job_evals, resume_evals = run_eval(args.eval_dir, backend, cache, progress=_progress)
+    _write(eval_report(job_evals, resume_evals, _backend_desc(backend)), args.out)
     _cost_note(backend)
 
 
@@ -144,6 +181,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--format", choices=["md", "json"], default="md")
     p.set_defaults(func=cmd_rank)
 
+    p = sub.add_parser("jobs", parents=[common], help="Rank job descriptions by fit for one resume")
+    p.add_argument("resume", type=Path, help="The resume (.pdf/.docx/.txt/.md)")
+    p.add_argument("jobs", type=Path, nargs="+",
+                   help="Job description files or folders; .json files are reviewed requirements")
+    p.add_argument("--top", type=int, default=3, help="Jobs to show in detail")
+    p.add_argument("--workers", type=int, default=4, help="Parallel scoring calls (claude backend)")
+    p.add_argument("--format", choices=["md", "json"], default="md")
+    p.set_defaults(func=cmd_jobs)
+
     p = sub.add_parser("fairness", parents=[common, job_args], help="Counterfactual name/pronoun bias tests")
     p.add_argument("resumes", type=Path, help="Folder of resumes")
     p.add_argument("--measure", action="store_true", help="Also measure score sensitivity (costs model calls)")
@@ -160,7 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    if args.command == "rank" and args.backend == "local":
+    if args.command in ("rank", "jobs") and args.backend == "local":
         args.workers = 1  # one model in memory; parallel calls don't help
     try:
         backend = get_backend(args.backend, args.model)
