@@ -1,9 +1,19 @@
 import math
 
-from shortlist_ai.evaluate import JobEval, check_verdicts, eval_report, ndcg_at_k, precision_at_k, resume_evals
+from shortlist_ai.evaluate import (
+    EvalRun,
+    JobEval,
+    check_verdicts,
+    eval_report,
+    ndcg_at_k,
+    precision_at_k,
+    resume_evals,
+    stability_report,
+)
 from shortlist_ai.pipeline import Ranking
 from shortlist_ai.prefilter import bm25_rank
 from shortlist_ai.schema import CandidateResult, JobSpec, Requirement, ScoredRequirement
+from shortlist_ai.score import shuffle_requirements
 
 
 def test_ndcg():
@@ -64,3 +74,31 @@ def test_check_verdicts_separates_lenient_from_strict():
                         ("real", "k8s"): "too strict", ("gone", "k8s"): "missing"}
     assert "**1/4 agree** · 1 too lenient · 1 too strict · 1 missing" in eval_report(evals, [], "fake",
                                                                                    check_verdicts(evals, expected))
+
+
+def test_shuffle_requirements_is_seeded_and_keeps_the_set():
+    job = JobSpec(title="t", requirements=[Requirement(id=f"r{i}", description="d", kind="must_have")
+                                           for i in range(6)])
+    a, b = shuffle_requirements(job, 1), shuffle_requirements(job, 1)
+    assert [r.id for r in a.requirements] == [r.id for r in b.requirements]
+    assert [r.id for r in a.requirements] != [r.id for r in job.requirements]
+    assert sorted(r.id for r in a.requirements) == [r.id for r in job.requirements]
+
+
+def test_stability_report_counts_verdicts_that_move():
+    job = JobSpec(title="t", requirements=[Requirement(id="r", description="r", kind="must_have")])
+
+    def run(seed, k8s, score):
+        r = _result("cand", score)
+        r.requirements = [ScoredRequirement(requirement_id=q, verdict=v, evidence=[], reasoning="",
+                                            kind="must_have", evidence_verified=True)
+                          for q, v in (("k8s", k8s), ("py", "met"))]
+        return EvalRun(seed, [JobEval("sre", Ranking(job, [r]), [3], [3])], [])
+
+    runs = [run(None, "met", 100), run(1, "partial", 75), run(2, "met", 100)]
+    text = "\n".join(stability_report(runs, {"sre": {"cand": {"k8s": "met"}}}))
+    assert "Stability across 3 requirement orderings" in text
+    assert "1 of 2 requirement verdicts (50%) were identical" in text
+    assert "| sre | cand | `k8s` | met → partial → met |" in text
+    assert "| Expected verdicts agreeing (of 1) | 0.0 | 0.7 | 1.0 |" in text
+    assert "at most 25.0" in text

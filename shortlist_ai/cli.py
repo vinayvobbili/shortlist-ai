@@ -151,12 +151,15 @@ def cmd_fairness(args, backend, cache):
 def cmd_eval(args, backend, cache):
     import json
 
-    from .evaluate import check_verdicts, eval_report, run_eval
+    from .evaluate import check_verdicts, eval_report, run_eval, stability_report
 
-    job_evals, resume_evals = run_eval(args.eval_dir, backend, cache, progress=_progress)
-    expected = args.eval_dir / "verdicts.json"
-    verdicts = check_verdicts(job_evals, json.loads(expected.read_text())) if expected.exists() else None
-    _write(eval_report(job_evals, resume_evals, _backend_desc(backend), verdicts), args.out)
+    runs = run_eval(args.eval_dir, backend, cache, progress=_progress, repeats=args.repeats)
+    path = args.eval_dir / "verdicts.json"
+    expected = json.loads(path.read_text()) if path.exists() else None
+    first = runs[0]
+    verdicts = check_verdicts(first.job_evals, expected) if expected else None
+    extra = stability_report(runs, expected) if len(runs) > 1 else None
+    _write(eval_report(first.job_evals, first.resume_evals, _backend_desc(backend), verdicts, extra), args.out)
     _cost_note(backend)
 
 
@@ -204,6 +207,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("eval", parents=[common], help="Score ranking quality against graded labels")
     p.add_argument("--eval-dir", type=Path, default=Path("eval"))
+    p.add_argument("--repeats", type=int, default=1,
+                   help="Runs; runs after the first shuffle the requirements, to measure how much results move")
     p.set_defaults(func=cmd_eval)
     return ap
 

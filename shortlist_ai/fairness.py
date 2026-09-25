@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from .backends import Backend
 from .pipeline import profile_for
 from .schema import JobSpec, Resume
-from .score import score_candidate
+from .score import score_candidate, shuffle_requirements
 
 NAME_VARIANTS = [
     ("Emily Walsh", "she"), ("Greg Baker", "he"),
@@ -113,12 +113,15 @@ class SensitivityReport:
 def measure_sensitivity(candidate_id: str, resume: Resume, job: JobSpec, backend: Backend,
                         repeats: int = 3, blind: bool = False) -> SensitivityReport:
     """Score each name variant (name visible unless blind=True), plus `repeats`
-    re-scores of the first variant to estimate model noise."""
+    re-scores of the first variant to estimate model noise. The re-scores list the requirements
+    in a different order: greedy local decoding repeats itself exactly, so identical re-scores
+    would always show zero noise."""
     scores = {}
     for name, pronoun in NAME_VARIANTS:
         profile = profile_for(make_variant(resume, name, pronoun), blind=blind)
         scores[name] = score_candidate(candidate_id, "", job, profile, backend).score
     first = profile_for(make_variant(resume, *NAME_VARIANTS[0]), blind=blind)
     noise = [scores[NAME_VARIANTS[0][0]]] + [
-        score_candidate(candidate_id, "", job, first, backend).score for _ in range(repeats - 1)]
+        score_candidate(candidate_id, "", shuffle_requirements(job, seed), first, backend).score
+        for seed in range(1, repeats)]
     return SensitivityReport(candidate_id, scores, noise)

@@ -11,6 +11,7 @@ Evidence that can't be found in the profile is treated as hallucinated: the
 verdict is downgraded one level and the candidate is flagged for review.
 """
 
+import random
 import re
 
 from .backends import Backend
@@ -48,6 +49,14 @@ def quote_in_profile(quote: str, profile: str) -> bool:
     haystack = _norm(profile)
     fragments = [f for f in re.split(r"\.{3}|…", quote) if _norm(f)]
     return bool(fragments) and all(_norm(f) in haystack for f in fragments)
+
+
+def shuffle_requirements(job: JobSpec, seed: int) -> JobSpec:
+    """The same job with its requirements in a seeded random order. Scoring looks requirements
+    up by id, so only the model's input changes: a cheap way to measure its sensitivity."""
+    requirements = list(job.requirements)
+    random.Random(seed).shuffle(requirements)
+    return job.model_copy(update={"requirements": requirements})
 
 
 def build_prompt(job: JobSpec, profile: str) -> list[dict]:

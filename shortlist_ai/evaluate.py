@@ -12,6 +12,11 @@ requirement ids so that verdicts.json can refer to them.
 Every (job, resume) pair is scored once. Read per job, the scores rank candidates
 (`shortlist rank`); read per resume, they rank jobs (`shortlist jobs`).
 
+With repeats > 1, run 1 shows the scorer the requirements as written and later runs show
+them in a seeded random order. Scoring is order-independent, so any change between runs is
+the model's sensitivity to an irrelevant detail (plus sampling noise, for backends that
+sample). That is the noise floor for comparing two versions of the tool.
+
 Grades: 3 strong fit, 2 good fit, 1 weak fit, 0 not a fit. Metrics:
     NDCG@k     ranking quality with graded relevance (1.0 = ideal order)
     P@k        share of the top k with grade >= 2
@@ -20,12 +25,14 @@ Grades: 3 strong fit, 2 good fit, 1 weak fit, 0 not a fit. Metrics:
 
 import json
 import math
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
 from .backends import Backend
 from .extract import Cache, extract_job, load_job_spec
 from .pipeline import Ranking, job_order, rank
+from .score import shuffle_requirements
 
 
 def dcg(grades: list[int]) -> float:
@@ -74,21 +81,37 @@ class ResumeEval:
                 "top1": float(self.ranked_grades[0] == max(all_grades))}
 
 
-def run_eval(eval_dir: Path, backend: Backend, cache: Cache, progress=None) -> tuple[list[JobEval], list[ResumeEval]]:
+@dataclass
+class EvalRun:
+    seed: int | None                # None: requirements in the order written
+    job_evals: list[JobEval]
+    resume_evals: list["ResumeEval"]
+
+
+def run_eval(eval_dir: Path, backend: Backend, cache: Cache, progress=None, repeats: int = 1) -> list[EvalRun]:
     labels = json.loads((eval_dir / "labels.json").read_text())
     resumes = sorted(p for p in (eval_dir / "resumes").iterdir() if not p.name.startswith("."))
-    job_evals = []
-    for job_name, grades in labels.items():
+    jobs = {}
+    for job_name in labels:
         reviewed = eval_dir / "jobs" / f"{job_name}.json"
-        job = (load_job_spec(reviewed) if reviewed.exists()
-               else extract_job(eval_dir / "jobs" / f"{job_name}.md", backend, cache))
-        # Evaluate the ranking stage itself: no prefilter cut.
-        ranking = rank(job, resumes, backend, cache=cache, prefilter_k=len(resumes), progress=progress)
-        # Failed candidates go to the bottom, so failures cost ranking quality.
-        order = [r.candidate_id for r in ranking.results] + sorted(ranking.errors)
-        job_evals.append(JobEval(job_name, ranking, [grades.get(c, 0) for c in order],
-                                 [grades.get(p.stem, 0) for p in resumes]))
-    return job_evals, resume_evals(job_evals, labels)
+        jobs[job_name] = (load_job_spec(reviewed) if reviewed.exists()
+                          else extract_job(eval_dir / "jobs" / f"{job_name}.md", backend, cache))
+    runs = []
+    for run in range(repeats):
+        seed = run or None
+        job_evals = []
+        for job_name, grades in labels.items():
+            job = shuffle_requirements(jobs[job_name], seed) if seed else jobs[job_name]
+            if progress and repeats > 1:
+                progress(f"run {run + 1}/{repeats}: {job_name}")
+            # Evaluate the ranking stage itself: no prefilter cut.
+            ranking = rank(job, resumes, backend, cache=cache, prefilter_k=len(resumes), progress=progress)
+            # Failed candidates go to the bottom, so failures cost ranking quality.
+            order = [r.candidate_id for r in ranking.results] + sorted(ranking.errors)
+            job_evals.append(JobEval(job_name, ranking, [grades.get(c, 0) for c in order],
+                                     [grades.get(p.stem, 0) for p in resumes]))
+        runs.append(EvalRun(seed, job_evals, resume_evals(job_evals, labels)))
+    return runs
 
 
 def resume_evals(job_evals: list[JobEval], labels: dict) -> list[ResumeEval]:
@@ -138,7 +161,7 @@ def check_verdicts(job_evals: list[JobEval], expected: dict) -> list[VerdictChec
 
 
 def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_desc: str,
-                verdicts: list[VerdictCheck] | None = None) -> str:
+                verdicts: list[VerdictCheck] | None = None, extra: list[str] | None = None) -> str:
     out = [f"# Ranking eval: `{backend_desc}`", "",
            "## Candidates for each job (`shortlist rank`)", "",
            "| Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |", "|---|---|---|---|---|"]
@@ -171,6 +194,7 @@ def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_d
             out += ["", "| Job | Candidate | Requirement | Expected | Got | |", "|---|---|---|---|---|---|"]
             out += [f"| {v.job} | {v.resume} | `{v.requirement}` | {v.expected} | {v.got or '—'} | {v.outcome} |"
                     for v in wrong]
+    out += extra or []
     out += ["", "## Per-job rankings"]
     for e in evals:
         out += ["", f"### {e.job}", "", "| Rank | Candidate | Score | Gold grade |", "|---|---|---|---|"]
@@ -179,3 +203,54 @@ def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_d
         for cid, err in e.ranking.errors.items():
             out.append(f"| - | {cid} | failed: {err[:60]} | - |")
     return "\n".join(out) + "\n"
+
+
+def stability_report(runs: list[EvalRun], expected: dict | None = None) -> list[str]:
+    """How much the results move across runs that differ only in requirement order."""
+    def spread(values, fmt="{:.2f}"):
+        return [fmt.format(min(values)), fmt.format(statistics.mean(values)), fmt.format(max(values))]
+
+    rows = [("Candidate ranking: mean NDCG@3",
+             spread([statistics.mean(e.metrics()["ndcg@3"] for e in r.job_evals) for r in runs])),
+            (f"Candidate ranking: top-1 correct (of {len(runs[0].job_evals)})",
+             spread([sum(e.metrics()["top1"] for e in r.job_evals) for r in runs], "{:.1f}"))]
+    if runs[0].resume_evals:
+        rows.append((f"Job ranking: top-1 correct (of {len(runs[0].resume_evals)})",
+                     spread([sum(x.metrics()["top1"] for x in r.resume_evals) for r in runs], "{:.1f}")))
+    if expected:
+        checks = [check_verdicts(r.job_evals, expected) for r in runs]
+        for label, outcome in ((f"Expected verdicts agreeing (of {len(checks[0])})", "agree"),
+                               ("... too lenient", "too lenient"), ("... too strict", "too strict")):
+            rows.append((label, spread([sum(v.outcome == outcome for v in c) for c in checks], "{:.1f}")))
+
+    out = ["", f"## Stability across {len(runs)} requirement orderings", "",
+           "Run 1 lists the requirements as written; the others shuffle them (seeds "
+           f"1–{len(runs) - 1}). Scoring is order-independent, so differences are the model's "
+           "sensitivity to an irrelevant detail, plus sampling noise for backends that sample.", "",
+           "| | min | mean | max |", "|---|---|---|---|"]
+    out += [f"| {label} | {' | '.join(vals)} |" for label, vals in rows]
+
+    verdicts: dict[tuple, list[str]] = {}
+    scores: dict[tuple, list[float]] = {}
+    for r in runs:
+        for e in r.job_evals:
+            for res in e.ranking.results:
+                scores.setdefault((e.job, res.candidate_id), []).append(res.score)
+                for sr in res.requirements:
+                    verdicts.setdefault((e.job, res.candidate_id, sr.requirement_id), []).append(sr.verdict)
+    complete = {k: v for k, v in verdicts.items() if len(v) == len(runs)}
+    changed = {k: v for k, v in complete.items() if len(set(v)) > 1}
+    ranges = {k: max(v) - min(v) for k, v in scores.items() if len(v) == len(runs)}
+    worst = max(ranges, key=ranges.get) if ranges else None
+    out += ["",
+            f"- **{len(complete) - len(changed)} of {len(complete)} requirement verdicts "
+            f"({(len(complete) - len(changed)) / max(1, len(complete)):.0%}) were identical in every ordering.**",
+            f"- A (job, resume) score moved by {statistics.mean(ranges.values()):.1f} points on average across "
+            f"orderings, and at most {ranges[worst]:.1f} ({worst[1]} for {worst[0]})." if worst else ""]
+    if changed:
+        out += ["", "Verdicts that changed with the ordering:", "",
+                "| Job | Candidate | Requirement | Verdict in each run |", "|---|---|---|---|"]
+        out += [f"| {j} | {c} | `{q}` | {' → '.join(v)} |" for (j, c, q), v in sorted(changed.items())[:40]]
+        if len(changed) > 40:
+            out.append(f"| … | {len(changed) - 40} more | | |")
+    return out
