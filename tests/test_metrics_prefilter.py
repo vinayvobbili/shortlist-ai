@@ -2,8 +2,8 @@ import math
 
 from shortlist_ai.evaluate import JobEval, check_verdicts, eval_report, ndcg_at_k, precision_at_k, resume_evals
 from shortlist_ai.pipeline import Ranking
-from shortlist_ai.schema import CandidateResult, JobSpec, Requirement, ScoredRequirement
 from shortlist_ai.prefilter import bm25_rank
+from shortlist_ai.schema import CandidateResult, JobSpec, Requirement, ScoredRequirement
 
 
 def test_ndcg():

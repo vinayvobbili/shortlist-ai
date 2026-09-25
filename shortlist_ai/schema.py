@@ -1,7 +1,7 @@
 """Data models. The LLM-facing models double as structured-output schemas, so their
 field descriptions are part of the prompt."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -18,30 +18,30 @@ class Link(BaseModel):
 class Experience(BaseModel):
     company: str
     title: str
-    location: Optional[str]
-    start_date: Optional[str] = Field(
+    location: str | None
+    start_date: str | None = Field(
         description="YYYY-MM, or YYYY alone if the resume gives only the year (never invent a month)")
-    end_date: Optional[str] = Field(description="Same format as start_date; null if this is the current role")
+    end_date: str | None = Field(description="Same format as start_date; null if this is the current role")
     is_current: bool
     highlights: list[str] = Field(description="Achievements/responsibilities, one per bullet, original wording")
 
 
 class Education(BaseModel):
     institution: str
-    degree: Optional[str] = Field(
+    degree: str | None = Field(
         description="Degree or credential type only, as written (e.g. 'B.A.', 'MBA', 'Diploma'); "
                     "the subject goes in field_of_study")
-    field_of_study: Optional[str] = Field(description="Subject/major, abbreviations written out in full")
-    graduation_year: Optional[int]
+    field_of_study: str | None = Field(description="Subject/major, abbreviations written out in full")
+    graduation_year: int | None
 
 
 class Resume(BaseModel):
     full_name: str
-    email: Optional[str]
-    phone: Optional[str]
-    location: Optional[str]
+    email: str | None
+    phone: str | None
+    location: str | None
     links: list[Link]
-    summary: Optional[str] = Field(description="The candidate's own summary/objective, if present")
+    summary: str | None = Field(description="The candidate's own summary/objective, if present")
     experience: list[Experience] = Field(description="Most recent first")
     education: list[Education]
     skills: list[str] = Field(

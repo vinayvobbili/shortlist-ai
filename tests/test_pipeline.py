@@ -9,7 +9,7 @@ from shortlist_ai.cli import main
 from shortlist_ai.extract import Cache
 from shortlist_ai.pipeline import match_jobs, rank
 from shortlist_ai.report import to_json, to_markdown
-from shortlist_ai.schema import (CandidateAssessment, JobSpec, Requirement, RequirementAssessment, Resume)
+from shortlist_ai.schema import CandidateAssessment, JobSpec, Requirement, RequirementAssessment, Resume
 
 JOB = JobSpec(title="Data Engineer", requirements=[
     Requirement(id="python", description="Python", kind="must_have"),
@@ -30,14 +30,14 @@ class FakeBackend:
         text = content[0]["text"]
         self.calls.append(output_type.__name__)
         if output_type is Resume:
-            skills = next(l for l in text.splitlines() if l.startswith("Skills:")).split(":")[1]
+            skills = next(line for line in text.splitlines() if line.startswith("Skills:")).split(":")[1]
             name = text.split("<resume>\n")[1].splitlines()[0]
             return Resume(full_name=name, email=None, phone=None, location=None, links=[], summary=None,
                           experience=[], education=[], skills=[s.strip() for s in skills.split(",")],
                           certifications=[], languages=[])
         if output_type is JobSpec:
             return JOB
-        skills_line = next(l for l in text.splitlines() if l.startswith("Skills:"))
+        skills_line = next(line for line in text.splitlines() if line.startswith("Skills:"))
         out = []
         for req_id, description in re.findall(r"^- id=(\S+) \[\w+\]: (.+)$", text, re.M):
             hit = description.lower() in skills_line.lower()

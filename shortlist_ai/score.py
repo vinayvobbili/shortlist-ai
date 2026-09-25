@@ -14,8 +14,7 @@ verdict is downgraded one level and the candidate is flagged for review.
 import re
 
 from .backends import Backend
-from .schema import (CandidateAssessment, CandidateResult, JobSpec, RequirementAssessment,
-                     ScoredRequirement)
+from .schema import CandidateAssessment, CandidateResult, JobSpec, RequirementAssessment, ScoredRequirement
 
 WEIGHTS = {"must_have": 3.0, "nice_to_have": 1.0}
 CREDIT = {"met": 1.0, "partial": 0.5, "not_met": 0.0}

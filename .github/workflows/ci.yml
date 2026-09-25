@@ -17,5 +17,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
+      - run: ruff check .
       # No API key or model needed: tests use a deterministic fake backend.
       - run: pytest -q

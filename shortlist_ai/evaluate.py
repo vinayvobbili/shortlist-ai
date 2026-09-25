@@ -174,7 +174,7 @@ def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_d
     out += ["", "## Per-job rankings"]
     for e in evals:
         out += ["", f"### {e.job}", "", "| Rank | Candidate | Score | Gold grade |", "|---|---|---|---|"]
-        for i, (r, g) in enumerate(zip(e.ranking.results, e.ranked_grades), 1):
+        for i, (r, g) in enumerate(zip(e.ranking.results, e.ranked_grades, strict=False), 1):
             out.append(f"| {i} | {r.candidate_id} | {r.score:.0f} | {g} |")
         for cid, err in e.ranking.errors.items():
             out.append(f"| - | {cid} | failed: {err[:60]} | - |")

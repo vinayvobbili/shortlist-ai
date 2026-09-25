@@ -103,7 +103,7 @@ def total_experience_months(resume: Resume, today: date | None = None) -> int:
 def blind_profile(resume: Resume, today: date | None = None) -> str:
     name_tokens = {t for t in re.split(r"[\s,.]+", resume.full_name) if len(t) > 1}
     # Also scrub exact contact values in case the regexes miss an unusual format.
-    literals = [v for v in (resume.email, resume.phone, *[l.url for l in resume.links]) if v]
+    literals = [v for v in (resume.email, resume.phone, *[link.url for link in resume.links]) if v]
 
     def clean(text: str) -> str:
         for lit in literals:

@@ -71,7 +71,8 @@ def jobs_to_markdown(matches: JobMatches, top: int, backend_desc: str) -> str:
     if matches.flags:
         out += ["**Notes about the resume:**"] + [f"- {f}" for f in matches.flags] + [""]
 
-    out += ["## Ranking", "", "| # | Job | Fit | Must-haves | Gaps (must-haves not fully met) |", "|---|---|---|---|---|"]
+    out += ["## Ranking", "", "| # | Job | Fit | Must-haves | Gaps (must-haves not fully met) |",
+            "|---|---|---|---|---|"]
     for i, m in enumerate(matches.matches, 1):
         r = m.result
         out.append(f"| {i} | {m.job.title} (`{m.job_id}`) | {r.score:.0f} | {r.must_haves_met}/{r.must_haves_total} | "

@@ -184,7 +184,8 @@ class _PageScan:
                     self._paint_unknown(_intersect(clip, _bbox([_apply(ctm, x, y) for x in (0, 1) for y in (0, 1)])))
                 elif op == b"Do" and (form := self._xobject(args)) is not None and "/BBox" in form:
                     x0, y0, x1, y1 = (float(v) for v in form["/BBox"])
-                    self._paint_unknown(_intersect(clip, _bbox([_apply(ctm, x, y) for x in (x0, x1) for y in (y0, y1)])))
+                    corners = [_apply(ctm, x, y) for x in (x0, x1) for y in (y0, y1)]
+                    self._paint_unknown(_intersect(clip, _bbox(corners)))
                 elif op == b"BT":
                     tlm = tm = _IDENTITY
                 elif op == b"Tm":
@@ -224,7 +225,7 @@ class _PageScan:
         behind = self.background(x, y)
         if fill is None or behind is None:
             return False  # can't tell (pattern colour, or text over an image): assume visible
-        return max(abs(a - b) for a, b in zip(fill, behind)) < MIN_CONTRAST
+        return max(abs(a - b) for a, b in zip(fill, behind, strict=True)) < MIN_CONTRAST
 
 
 def _pdf_text(path: Path) -> tuple[str, str]:

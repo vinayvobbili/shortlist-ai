@@ -217,16 +217,17 @@ def main(argv=None):
         cache = Cache(None if args.no_cache else DEFAULT_CACHE_DIR)
         args.func(args, backend, cache)
     except BackendError as e:
-        raise SystemExit(f"Error: {e}")
+        raise SystemExit(f"Error: {e}") from None
     except ValueError as e:
-        raise SystemExit(f"Error: {e}")
+        raise SystemExit(f"Error: {e}") from None
     except ImportError as e:
-        raise SystemExit(f"Error: {e}")
+        raise SystemExit(f"Error: {e}") from None
     except Exception as e:
         # Missing or invalid credentials are the most common first-run problem. The SDK
         # raises TypeError when none are configured, AuthenticationError when rejected.
         if type(e).__name__ == "AuthenticationError" or "Could not resolve authentication" in str(e):
-            raise SystemExit("Error: no valid Anthropic API key. Set ANTHROPIC_API_KEY, or use --backend local.")
+            raise SystemExit("Error: no valid Anthropic API key. "
+                             "Set ANTHROPIC_API_KEY, or use --backend local.") from None
         raise
 
 

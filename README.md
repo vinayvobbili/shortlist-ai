@@ -332,6 +332,7 @@ published results yet.
 ```bash
 pip install -e ".[dev]"
 pytest            # no API key or model needed: tests use a deterministic fake backend
+ruff check .      # lint (CI runs both)
 ```
 
 Project layout: `shortlist_ai/` (`documents` → `extract` → `blind` → `prefilter` → `score` →

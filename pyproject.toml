@@ -26,13 +26,26 @@ classifiers = [
 [project.optional-dependencies]
 # Local backend: Apple Silicon only. outlines needs Python <= 3.13 until it ships 3.14 wheels.
 local = ["mlx-lm>=0.31", "outlines>=1.3"]
-dev = ["pytest>=8", "pymupdf>=1.24"]
+dev = ["pytest>=8", "pymupdf>=1.24", "ruff>=0.14"]
 
 [project.scripts]
 shortlist = "shortlist_ai.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["shortlist_ai"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "RUF"]
+# Curly quotes and en dashes are deliberate: text normalization and report typography.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# Prompt text: wrapping it would change what the model sees (and invalidate the cache).
+"shortlist_ai/{extract,score}.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

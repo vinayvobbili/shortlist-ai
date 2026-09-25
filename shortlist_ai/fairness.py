@@ -83,10 +83,10 @@ class LeakReport:
 def leak_check(candidate_id: str, resume: Resume) -> LeakReport:
     profiles = [profile_for(make_variant(resume, n, p), blind=True) for n, p in NAME_VARIANTS]
     base = profiles[0]
-    for (name, _), profile in zip(NAME_VARIANTS, profiles):
+    for (name, _), profile in zip(NAME_VARIANTS, profiles, strict=True):
         if profile != base:
             a, b = base.splitlines(), profile.splitlines()
-            diff = next((f"'{x}' vs '{y}'" for x, y in zip(a, b) if x != y), "line count differs")
+            diff = next((f"'{x}' vs '{y}'" for x, y in zip(a, b, strict=False) if x != y), "line count differs")
             return LeakReport(candidate_id, False, f"{NAME_VARIANTS[0][0]} vs {name}: {diff}")
     return LeakReport(candidate_id, True, None)
 
