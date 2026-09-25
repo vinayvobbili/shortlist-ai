@@ -149,10 +149,14 @@ def cmd_fairness(args, backend, cache):
 
 
 def cmd_eval(args, backend, cache):
-    from .evaluate import eval_report, run_eval
+    import json
+
+    from .evaluate import check_verdicts, eval_report, run_eval
 
     job_evals, resume_evals = run_eval(args.eval_dir, backend, cache, progress=_progress)
-    _write(eval_report(job_evals, resume_evals, _backend_desc(backend)), args.out)
+    expected = args.eval_dir / "verdicts.json"
+    verdicts = check_verdicts(job_evals, json.loads(expected.read_text())) if expected.exists() else None
+    _write(eval_report(job_evals, resume_evals, _backend_desc(backend), verdicts), args.out)
     _cost_note(backend)
 
 

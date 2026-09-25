@@ -4,6 +4,10 @@ Layout (see eval/):
     eval/jobs/<job>.md            job descriptions
     eval/resumes/*                candidate resumes (synthetic)
     eval/labels.json              {"<job>": {"<resume stem>": grade}}
+    eval/verdicts.json            optional: {"<job>": {"<resume>": {"<requirement id>": verdict}}}
+
+A job can also be a reviewed requirements file, jobs/<job>.json, which fixes its
+requirement ids so that verdicts.json can refer to them.
 
 Every (job, resume) pair is scored once. Read per job, the scores rank candidates
 (`shortlist rank`); read per resume, they rank jobs (`shortlist jobs`).
@@ -20,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .backends import Backend
-from .extract import Cache, extract_job
+from .extract import Cache, extract_job, load_job_spec
 from .pipeline import Ranking, job_order, rank
 
 
@@ -75,7 +79,9 @@ def run_eval(eval_dir: Path, backend: Backend, cache: Cache, progress=None) -> t
     resumes = sorted(p for p in (eval_dir / "resumes").iterdir() if not p.name.startswith("."))
     job_evals = []
     for job_name, grades in labels.items():
-        job = extract_job(eval_dir / "jobs" / f"{job_name}.md", backend, cache)
+        reviewed = eval_dir / "jobs" / f"{job_name}.json"
+        job = (load_job_spec(reviewed) if reviewed.exists()
+               else extract_job(eval_dir / "jobs" / f"{job_name}.md", backend, cache))
         # Evaluate the ranking stage itself: no prefilter cut.
         ranking = rank(job, resumes, backend, cache=cache, prefilter_k=len(resumes), progress=progress)
         # Failed candidates go to the bottom, so failures cost ranking quality.
@@ -102,7 +108,37 @@ def resume_evals(job_evals: list[JobEval], labels: dict) -> list[ResumeEval]:
     return out
 
 
-def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_desc: str) -> str:
+VERDICT_RANK = {"not_met": 0, "partial": 1, "met": 2}
+
+
+@dataclass
+class VerdictCheck:
+    job: str
+    resume: str
+    requirement: str
+    expected: str
+    got: str | None     # None: the candidate failed to process
+
+    @property
+    def outcome(self) -> str:
+        if self.got == self.expected:
+            return "agree"
+        if self.got is None:
+            return "missing"
+        return "too lenient" if VERDICT_RANK[self.got] > VERDICT_RANK[self.expected] else "too strict"
+
+
+def check_verdicts(job_evals: list[JobEval], expected: dict) -> list[VerdictCheck]:
+    got = {(e.job, r.candidate_id, s.requirement_id): s.verdict
+           for e in job_evals for r in e.ranking.results for s in r.requirements}
+    return [VerdictCheck(job, resume, req, verdict, got.get((job, resume, req)))
+            for job, by_resume in expected.items()
+            for resume, by_req in by_resume.items()
+            for req, verdict in by_req.items()]
+
+
+def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_desc: str,
+                verdicts: list[VerdictCheck] | None = None) -> str:
     out = [f"# Ranking eval: `{backend_desc}`", "",
            "## Candidates for each job (`shortlist rank`)", "",
            "| Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |", "|---|---|---|---|---|"]
@@ -125,6 +161,16 @@ def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_d
         n = len(resume_evals_)
         out.append(f"| **mean** | **top-1 correct: {sum(r.metrics()['top1'] for r in resume_evals_) / n:.0%}** | | "
                    f"**{sum(r.metrics()['ndcg@3'] for r in resume_evals_) / n:.2f}** |")
+    if verdicts:
+        counts = {k: sum(v.outcome == k for v in verdicts) for k in ("agree", "too lenient", "too strict", "missing")}
+        out += ["", "## Requirement verdicts vs. expected", "",
+                f"**{counts['agree']}/{len(verdicts)} agree** · {counts['too lenient']} too lenient · "
+                f"{counts['too strict']} too strict" + (f" · {counts['missing']} missing" if counts["missing"] else "")]
+        wrong = [v for v in verdicts if v.outcome != "agree"]
+        if wrong:
+            out += ["", "| Job | Candidate | Requirement | Expected | Got | |", "|---|---|---|---|---|---|"]
+            out += [f"| {v.job} | {v.resume} | `{v.requirement}` | {v.expected} | {v.got or '—'} | {v.outcome} |"
+                    for v in wrong]
     out += ["", "## Per-job rankings"]
     for e in evals:
         out += ["", f"### {e.job}", "", "| Rank | Candidate | Score | Gold grade |", "|---|---|---|---|"]

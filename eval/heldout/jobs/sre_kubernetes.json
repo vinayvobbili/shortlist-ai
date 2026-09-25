@@ -1,0 +1,40 @@
+{
+  "title": "Site Reliability Engineer (Kubernetes)",
+  "requirements": [
+    {
+      "id": "years_infra",
+      "description": "3+ years in site reliability, platform or infrastructure engineering",
+      "kind": "must_have"
+    },
+    {
+      "id": "kubernetes_production",
+      "description": "Hands-on experience running Kubernetes in production",
+      "kind": "must_have"
+    },
+    {
+      "id": "terraform",
+      "description": "Hands-on experience writing Terraform",
+      "kind": "must_have"
+    },
+    {
+      "id": "python_or_go",
+      "description": "Python or Go",
+      "kind": "must_have"
+    },
+    {
+      "id": "cka",
+      "description": "Certified Kubernetes Administrator (CKA)",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "observability",
+      "description": "Prometheus and Grafana",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "on_call",
+      "description": "On-call incident management experience",
+      "kind": "nice_to_have"
+    }
+  ]
+}

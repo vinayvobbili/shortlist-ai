@@ -1,0 +1,40 @@
+{
+  "title": "Security Engineer (Azure)",
+  "requirements": [
+    {
+      "id": "years_security",
+      "description": "3+ years of security engineering experience",
+      "kind": "must_have"
+    },
+    {
+      "id": "azure_security",
+      "description": "Hands-on experience securing Azure (Defender, Sentinel, Entra ID)",
+      "kind": "must_have"
+    },
+    {
+      "id": "kql",
+      "description": "KQL",
+      "kind": "must_have"
+    },
+    {
+      "id": "scripting",
+      "description": "Python or PowerShell",
+      "kind": "must_have"
+    },
+    {
+      "id": "az500",
+      "description": "AZ-500 certification",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "incident_response",
+      "description": "Incident response experience",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "terraform",
+      "description": "Terraform",
+      "kind": "nice_to_have"
+    }
+  ]
+}

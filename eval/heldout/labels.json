@@ -1,0 +1,15 @@
+{
+  "sre_kubernetes": {
+    "h01_keiko_tanaka": 3,
+    "h07_lucas_fernandez": 3,
+    "h02_daniel_okoye": 1
+  },
+  "ml_engineer": {
+    "h03_sofia_marino": 3,
+    "h04_chloe_bennett": 1
+  },
+  "azure_security_engineer": {
+    "h05_hana_kowalski": 3,
+    "h06_ryan_brooks": 1
+  }
+}

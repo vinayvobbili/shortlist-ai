@@ -1,0 +1,66 @@
+{
+  "sre_kubernetes": {
+    "h01_keiko_tanaka": {
+      "years_infra": "met",
+      "kubernetes_production": "met",
+      "terraform": "met",
+      "python_or_go": "met",
+      "cka": "met",
+      "observability": "met",
+      "on_call": "met"
+    },
+    "h02_daniel_okoye": {
+      "kubernetes_production": "partial",
+      "terraform": "partial",
+      "python_or_go": "met",
+      "cka": "met",
+      "on_call": "not_met"
+    },
+    "h07_lucas_fernandez": {
+      "years_infra": "met",
+      "kubernetes_production": "met",
+      "terraform": "met",
+      "python_or_go": "met",
+      "cka": "not_met",
+      "observability": "not_met"
+    }
+  },
+  "ml_engineer": {
+    "h03_sofia_marino": {
+      "production_ml": "met",
+      "python": "met",
+      "dl_framework": "met",
+      "sql": "met",
+      "mlops": "met",
+      "aws_ml_cert": "not_met",
+      "ab_testing": "met"
+    },
+    "h04_chloe_bennett": {
+      "production_ml": "not_met",
+      "python": "met",
+      "dl_framework": "partial",
+      "sql": "met",
+      "mlops": "not_met",
+      "aws_ml_cert": "met"
+    }
+  },
+  "azure_security_engineer": {
+    "h05_hana_kowalski": {
+      "years_security": "met",
+      "azure_security": "met",
+      "kql": "met",
+      "scripting": "met",
+      "az500": "met",
+      "incident_response": "met",
+      "terraform": "met"
+    },
+    "h06_ryan_brooks": {
+      "years_security": "not_met",
+      "azure_security": "partial",
+      "kql": "met",
+      "scripting": "met",
+      "az500": "met",
+      "incident_response": "not_met"
+    }
+  }
+}

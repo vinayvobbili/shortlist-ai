@@ -1,0 +1,40 @@
+{
+  "title": "Machine Learning Engineer",
+  "requirements": [
+    {
+      "id": "production_ml",
+      "description": "Experience deploying machine learning models to production",
+      "kind": "must_have"
+    },
+    {
+      "id": "python",
+      "description": "Python",
+      "kind": "must_have"
+    },
+    {
+      "id": "dl_framework",
+      "description": "Hands-on experience with PyTorch or TensorFlow",
+      "kind": "must_have"
+    },
+    {
+      "id": "sql",
+      "description": "SQL",
+      "kind": "must_have"
+    },
+    {
+      "id": "mlops",
+      "description": "MLOps tooling such as MLflow or Kubeflow",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "aws_ml_cert",
+      "description": "AWS Certified Machine Learning – Specialty",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "ab_testing",
+      "description": "A/B testing experience",
+      "kind": "nice_to_have"
+    }
+  ]
+}
