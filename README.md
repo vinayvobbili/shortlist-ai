@@ -195,7 +195,9 @@ was run** and explained in [`eval/README.md`](eval/README.md). The set includes 
 near-misses, such as a data engineer on AWS applying to a GCP role and the reverse.
 
 Each (job, resume) pair is scored once, and the grid is read both ways: per job for candidate
-ranking (`shortlist rank`) and per resume for job ranking (`shortlist jobs`).
+ranking (`shortlist rank`) and per resume for job ranking (`shortlist jobs`). `--repeats N` adds
+runs with the requirements shuffled and reports how much the results move, which is the noise
+floor for comparing two versions (see the held-out section below).
 
 ```bash
 shortlist eval --backend local --out results/eval_local.md
@@ -258,20 +260,44 @@ with expected per-requirement verdicts **before** the fix and before any model s
 has a candidate whose certifications and skills list match but whose work history doesn't, plus
 cases where being too strict would be wrong.
 
+Each version was run three times: once with the requirements in the order written and twice with
+them shuffled (`shortlist eval --repeats 3`). The local model decodes greedily, so an identical
+rerun repeats itself exactly. Shuffling the requirement order, which scoring ignores, shows how
+much the model's answers depend on details that shouldn't matter. Ranges are min–max over the
+three orderings.
+
 | Held-out set | Before the fix | After the fix |
 |---|---|---|
-| Candidate and job rankings | all correct | all correct |
-| Requirement verdicts matching expected | 41/44 | 41/44 |
-| ... too lenient | 1 | 0 |
-| ... too strict | 2 | 3 |
-| Score of the certificate-heavy candidates (sysadmin, ML analyst, IT support) | 47, 67, 57 | 37, 57, 57 |
+| Candidate and job rankings | all correct, every ordering | all correct, every ordering |
+| Requirement verdicts matching expected (of 44) | 38–41 (mean 40) | 41 in every ordering |
+| ... too lenient | 1–4 (mean 2.3) | 0–2 (mean 1.0) |
+| ... too strict | 1–2 (mean 1.7) | 1–3 (mean 2.0) |
+| Verdicts identical in all three orderings | 138/147 (94%) | 136/147 (93%) |
+| Score change from ordering alone, mean / max | 3.5 / 20 points | 3.2 / 27 points |
+| Score of the certificate-heavy candidates (sysadmin, ML analyst, IT support), as written | 47, 67, 57 | 37, 57, 57 |
 
-**Honest reading: the fix trades leniency for strictness without improving accuracy.** It widens
-the gap between real and certificate-only experience, which is the behavior it was meant to
-produce. It also marked a Terraform nice-to-have as partial for a candidate who lists Terraform,
-which breaks its own "only names a tool" rule. With 44 verdicts and no measurement of run-to-run
-noise, a difference of one or two isn't meaningful. The held-out set has now been looked at,
-so the next change needs fresh cases. Before/after reports:
+**Honest reading: the fix moves errors from lenient to strict, and helps accuracy a little at most.**
+Too-lenient verdicts fell (mean 2.3 to 1.0), which is what the fix was meant to do, and
+agreement no longer dips below 41. But strict errors took their place. In two of three orderings, a
+Terraform nice-to-have was marked partial for a candidate who lists Terraform, which breaks the
+fix's own "only names a tool" rule. The ranges overlap, and three orderings of 44 verdicts are too
+few to call a one-verdict gain.
+
+**What the orderings show about the tool itself:**
+
+- **Ordering alone changes a few verdicts.** About 1 in 15 verdicts flipped just from shuffling
+  the requirements, so a one- or two-verdict gap between single runs isn't evidence. Before this
+  measurement, the before/after comparison was one run each, and one ordering for the old prompt
+  would have scored 38/44 rather than 41.
+- **The flips are on borderline evidence, and they cluster on weak candidates.** Most moved one
+  step (partial ↔ met or partial ↔ not_met). Daniel (sysadmin with Kubernetes
+  certificates) had 5 of the 11 flips with the fixed prompt, and Daniel's SRE score moved by up to
+  27 points. In one ordering the model also missed Daniel's CKA certificate, a plain error.
+- **Rankings stayed correct.** In every ordering of both prompts, NDCG@3 was 1.00 and every top
+  pick was right, for candidates and for jobs. Scores move, but not across the gaps between strong,
+  adequate and weak fits. Treat borderline scores as a range, not a point.
+
+The held-out set has now been looked at, so the next change needs fresh cases. Before/after reports:
 [`results/heldout_local_before.md`](results/heldout_local_before.md),
 [`results/heldout_local.md`](results/heldout_local.md).
 
@@ -287,8 +313,9 @@ shortlist fairness eval/resumes/ --jd <job> --measure          # score sensitivi
    pronouns. The blind profiles must come out **byte-for-byte identical**. If they are, the scorer
    receives the same input regardless of apparent identity. Any difference is reported as a leak.
 2. **Sensitivity measurement:** scores the same variants *with the name shown* and compares the
-   spread across names to the spread from simply re-scoring (model noise). This measures what
-   blinding protects against for a given model.
+   spread across names to the spread from re-scoring with the requirements in a different order
+   (model noise; a plain re-score would show none, because local decoding is deterministic). This
+   measures what blinding protects against for a given model.
 
 Leak check on the eval set ([`results/fairness_local.md`](results/fairness_local.md)):
 **17/17 blind profiles identical** across all ten name/pronoun variants (the scanned PDF was

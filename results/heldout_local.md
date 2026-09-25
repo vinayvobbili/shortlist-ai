@@ -34,6 +34,38 @@ Resumes that fit at least one of the 3 jobs.
 | sre_kubernetes | h02_daniel_okoye | `terraform` | partial | not_met | too strict |
 | azure_security_engineer | h05_hana_kowalski | `terraform` | met | partial | too strict |
 
+## Stability across 3 requirement orderings
+
+Run 1 lists the requirements as written; the others shuffle them (seeds 1–2). Scoring is order-independent, so differences are the model's sensitivity to an irrelevant detail, plus sampling noise for backends that sample.
+
+| | min | mean | max |
+|---|---|---|---|
+| Candidate ranking: mean NDCG@3 | 1.00 | 1.00 | 1.00 |
+| Candidate ranking: top-1 correct (of 3) | 3.0 | 3.0 | 3.0 |
+| Job ranking: top-1 correct (of 7) | 7.0 | 7.0 | 7.0 |
+| Expected verdicts agreeing (of 44) | 41.0 | 41.0 | 41.0 |
+| ... too lenient | 0.0 | 1.0 | 2.0 |
+| ... too strict | 1.0 | 2.0 | 3.0 |
+
+- **136 of 147 requirement verdicts (93%) were identical in every ordering.**
+- A (job, resume) score moved by 3.2 points on average across orderings, and at most 26.6 (h02_daniel_okoye for sre_kubernetes).
+
+Verdicts that changed with the ordering:
+
+| Job | Candidate | Requirement | Verdict in each run |
+|---|---|---|---|
+| azure_security_engineer | h01_keiko_tanaka | `incident_response` | not_met → partial → not_met |
+| azure_security_engineer | h05_hana_kowalski | `terraform` | partial → met → partial |
+| azure_security_engineer | h06_ryan_brooks | `incident_response` | not_met → partial → not_met |
+| ml_engineer | h04_chloe_bennett | `dl_framework` | partial → met → met |
+| sre_kubernetes | h02_daniel_okoye | `cka` | met → not_met → met |
+| sre_kubernetes | h02_daniel_okoye | `kubernetes_production` | not_met → partial → not_met |
+| sre_kubernetes | h02_daniel_okoye | `observability` | not_met → partial → not_met |
+| sre_kubernetes | h02_daniel_okoye | `terraform` | not_met → partial → partial |
+| sre_kubernetes | h02_daniel_okoye | `years_infra` | partial → met → met |
+| sre_kubernetes | h05_hana_kowalski | `python_or_go` | partial → met → met |
+| sre_kubernetes | h05_hana_kowalski | `terraform` | partial → met → partial |
+
 ## Per-job rankings
 
 ### sre_kubernetes

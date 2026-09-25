@@ -41,5 +41,7 @@ experience. This set checks that failure in both directions:
 
 Used once, for the certification/skills-list scoring rule (commit `4bc7cbb`). Verdict agreement
 was 41/44 both before and after: one fewer too-lenient verdict, one more too-strict. See the main
-README's "A scorer fix, checked on held-out data". **This set has now been seen**, so don't use it
+README's "A scorer fix, checked on held-out data". A second pass ran each version with three
+requirement orderings (`--repeats 3`) to measure noise; the first ordering reproduced the original
+results exactly. **This set has now been seen**, so don't use it
 to justify the next prompt change; add new cases instead.
