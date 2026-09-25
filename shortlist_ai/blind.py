@@ -79,27 +79,6 @@ def format_duration(months: int | None) -> str:
     return " ".join(parts) or "under 1 mo"
 
 
-def total_experience_months(resume: Resume, today: date | None = None) -> int:
-    """Union of job date ranges, so overlapping roles aren't double-counted."""
-    spans = []
-    for job in resume.experience:
-        begin = _parse_ym(job.start_date)
-        if begin is None:
-            continue
-        t = today or date.today()
-        finish = _parse_ym(job.end_date) or (t.year, t.month)
-        spans.append((begin[0] * 12 + begin[1], finish[0] * 12 + finish[1]))
-    total, current_end = 0, None
-    for s, e in sorted(spans):
-        if current_end is None or s > current_end:
-            total += e - s
-            current_end = e
-        elif e > current_end:
-            total += e - current_end
-            current_end = e
-    return total
-
-
 def blind_profile(resume: Resume, today: date | None = None) -> str:
     name_tokens = {t for t in re.split(r"[\s,.]+", resume.full_name) if len(t) > 1}
     # Also scrub exact contact values in case the regexes miss an unusual format.
@@ -114,7 +93,9 @@ def blind_profile(resume: Resume, today: date | None = None) -> str:
     if resume.summary:
         lines += ["", "Summary:", clean(resume.summary)]
 
-    lines += ["", f"Experience (total {format_duration(total_experience_months(resume, today))}):"]
+    # No total across roles: the scorer counted it toward "N+ years of X" even when none of the
+    # years were in X. Per-role durations let it add up only the relevant ones.
+    lines += ["", "Experience:"]
     if not resume.experience:
         lines.append("- none listed")
     for job in resume.experience:
