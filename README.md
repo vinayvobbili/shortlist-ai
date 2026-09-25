@@ -57,8 +57,11 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
 - **Blind profile:** removes name, email, phone, links, home and job locations, school names and
   graduation years; replaces dates with durations; neutralizes pronouns and honorifics. Job titles,
   companies, accomplishments, skills, certifications and degrees stay.
-- **Injection defenses:** resumes are untrusted input. PDF text a reader can't see (white or under
-  4pt) is stripped before any model reads the file, and the candidate is flagged. Extracted skills and
+- **Injection defenses:** resumes are untrusted input. PDF text a reader can't see is stripped
+  before any model reads the file, and the candidate is flagged. "Can't see" is judged where each
+  string is drawn: the same colour as what's behind it (white on white, but not white on a dark
+  sidebar or gradient banner), transparent, under 4pt, off the page, or in invisible mode on a page
+  with no scanned image. Extracted skills and
   certifications that don't appear in the visible text are removed and flagged, which also catches
   injections that get past the first check. The eval set includes a resume with a planted injection.
 - **Caching:** extractions are cached per file, so re-ranking against a new job costs only the scoring calls.
@@ -294,8 +297,10 @@ published results yet.
 
 ## Known limitations
 
-- **White text on a dark background** (some designed templates) counts as hidden text. It is excluded
-  and the candidate is flagged, so check flagged resumes against the original file.
+- **Hidden-text detection is geometric, not visual.** It knows the colour of flat shapes but not of
+  images, gradients or embedded form objects, so text drawn over those is assumed visible (skills
+  grounding still applies). Text inside embedded form objects isn't checked. Across 390 PDFs that
+  ship with macOS and installed apps, the only flags were text under 4pt in small icons.
 - **Grounding is literal.** If the model renames a skill ("JS" → "JavaScript"), the renamed skill is
   removed and flagged. On the eval set this happened zero times, but review the flags.
 - **Scans** have no text layer to check extraction against; grounding is skipped for them, and the local

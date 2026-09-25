@@ -88,7 +88,7 @@ def ground(resume: Resume, doc: LoadedDocument) -> ExtractedResume:
     flags = []
     if doc.hidden_text:
         snippet = doc.hidden_text[:80] + ("..." if len(doc.hidden_text) > 80 else "")
-        flags.append(f"PDF contains hidden text (white or <4pt), excluded from extraction: '{snippet}'")
+        flags.append(f"PDF contains hidden text (a reader can't see it), excluded from extraction: '{snippet}'")
     if not doc.text.strip():
         return ExtractedResume(resume, flags)
     text = _norm(doc.text)
