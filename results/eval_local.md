@@ -33,6 +33,65 @@ Resumes that fit at least one of the 6 jobs.
 | c18_nadia_haddad | cloud_security_engineer (3, score 94) | 3 | 1.00 |
 | **mean** | **top-1 correct: 100%** | | **1.00** |
 
+## Stability across 3 requirement orderings
+
+Run 1 lists the requirements as written; the others shuffle them (seeds 1–2). Scoring is order-independent, so differences are the model's sensitivity to an irrelevant detail, plus sampling noise for backends that sample.
+
+| | min | mean | max |
+|---|---|---|---|
+| Candidate ranking: mean NDCG@3 | 0.96 | 0.98 | 0.99 |
+| Candidate ranking: top-1 correct (of 6) | 5.0 | 5.7 | 6.0 |
+| Job ranking: top-1 correct (of 13) | 12.0 | 12.3 | 13.0 |
+
+- **800 of 850 requirement verdicts (94%) were identical in every ordering.**
+- A (job, resume) score moved by 4.3 points on average across orderings, and at most 20.5 (c09_elena_petrova for senior_data_engineer_gcp).
+
+Verdicts that changed with the ordering:
+
+| Job | Candidate | Requirement | Verdict in each run |
+|---|---|---|---|
+| cloud_security_engineer | c01_priya_raman | `aws_security_experience` | partial → met → partial |
+| data_analyst | c12_david_kim | `sql` | partial → partial → met |
+| data_analyst | c14_hannah_lee | `statistics_ab_testing` | partial → not_met → not_met |
+| data_analyst | c15_carlos_diaz | `advanced_excel` | not_met → not_met → partial |
+| data_analyst | c15_carlos_diaz | `python_or_r` | met → partial → met |
+| data_analyst | c16_amara_nwosu | `dbt_data_modeling` | not_met → not_met → partial |
+| data_analyst | c16_amara_nwosu | `python_or_r` | met → partial → met |
+| data_engineer_aws | c01_priya_raman | `years_experience` | not_met → met → met |
+| data_engineer_aws | c02_marcus_bell | `years_experience` | not_met → met → met |
+| data_engineer_aws | c03_wei_zhang | `aws_data_services` | partial → not_met → not_met |
+| data_engineer_aws | c03_wei_zhang | `sql` | met → not_met → not_met |
+| data_engineer_aws | c04_ana_torres | `years_experience` | not_met → met → met |
+| data_engineer_aws | c06_rahul_menon | `streaming_kafka` | not_met → partial → partial |
+| data_engineer_aws | c08_jordan_blake | `years_experience` | not_met → met → met |
+| data_engineer_aws | c09_elena_petrova | `years_experience` | not_met → met → met |
+| data_engineer_aws | c10_tom_reyes | `years_experience` | not_met → met → met |
+| data_engineer_aws | c11_lina_haddad | `years_experience` | not_met → met → met |
+| data_engineer_aws | c12_david_kim | `sql` | partial → partial → met |
+| data_engineer_aws | c12_david_kim | `years_experience` | not_met → met → met |
+| data_engineer_aws | c13_oliver_grant | `streaming_kafka` | met → met → partial |
+| data_engineer_aws | c13_oliver_grant | `terraform` | met → met → partial |
+| data_engineer_aws | c14_hannah_lee | `aws_data_services` | partial → partial → not_met |
+| data_engineer_aws | c15_carlos_diaz | `python` | met → met → partial |
+| data_engineer_aws | c16_amara_nwosu | `python` | met → met → partial |
+| data_engineer_aws | c16_amara_nwosu | `streaming_kafka` | not_met → partial → not_met |
+| data_engineer_aws | c16_amara_nwosu | `terraform` | met → met → partial |
+| data_engineer_aws | c17_ben_carter | `years_experience` | not_met → met → met |
+| data_engineer_aws | c18_nadia_haddad | `streaming_kafka` | not_met → partial → not_met |
+| incident_response_engineer | c01_priya_raman | `security_ops_experience` | met → met → partial |
+| incident_response_engineer | c05_sam_okafor | `python_scripting` | met → partial → met |
+| incident_response_engineer | c06_rahul_menon | `cloud_security_experience` | not_met → not_met → partial |
+| incident_response_engineer | c06_rahul_menon | `python_scripting` | met → partial → met |
+| incident_response_engineer | c14_hannah_lee | `cloud_security_experience` | not_met → not_met → partial |
+| incident_response_engineer | c16_amara_nwosu | `cloud_security_experience` | not_met → not_met → partial |
+| incident_response_engineer | c17_ben_carter | `malware_analysis` | not_met → partial → partial |
+| incident_response_engineer | c17_ben_carter | `python_scripting` | partial → met → met |
+| incident_response_engineer | c18_nadia_haddad | `incident_investigation_leadership` | not_met → partial → not_met |
+| incident_response_engineer | c18_nadia_haddad | `security_certifications` | not_met → partial → not_met |
+| senior_data_engineer_gcp | c01_priya_raman | `years_experience` | not_met → met → met |
+| senior_data_engineer_gcp | c02_marcus_bell | `years_experience` | not_met → met → not_met |
+| … | 10 more | | |
+
 ## Per-job rankings
 
 ### senior_data_engineer_gcp

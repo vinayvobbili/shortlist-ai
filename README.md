@@ -200,7 +200,7 @@ runs with the requirements shuffled and reports how much the results move, which
 floor for comparing two versions (see the held-out section below).
 
 ```bash
-shortlist eval --backend local --out results/eval_local.md
+shortlist eval --backend local --repeats 3 --out results/eval_local.md
 ```
 
 Results with the local backend (Qwen3.5-9B, 4-bit, MLX, on an M4 Mac mini), from
@@ -223,6 +223,11 @@ Results with the local backend (Qwen3.5-9B, 4-bit, MLX, on an M4 Mac mini), from
 
 ¹ At the ceiling: only one (frontend) or two (cloud security) candidates are graded 2 or higher.
 
+The tables are for the requirements in the order written. Across three orderings (two of them
+shuffled), results moved a little: mean NDCG@3 0.96–0.99, top-1 correct 5–6 of 6 jobs and 12–13
+of 13 resumes, and 800 of 850 verdicts (94%) identical in every ordering. See the held-out section
+for why orderings are the right measure of noise here.
+
 **Read this as "no regressions", not a benchmark.** The set is small and synthetic, and the same
 people wrote it and the tool. What it does show:
 
@@ -238,6 +243,12 @@ people wrote it and the tool. What it does show:
   because that candidate is graded 0 for every job. Use `--backend claude` or OCR scans first.
 - The BM25 prefilter is rough. In the example above, a cut to 6 kept a grade-0 candidate and dropped
   a grade-1 one. The eval scores every candidate, so this doesn't affect the metrics above.
+- **"N+ years of X" requirements are the least stable.** For "3+ years of professional data
+  engineering experience", the model rejects a nurse's 10 years when that requirement comes
+  first. When it comes later in the list, it often marks the requirement met: *"The profile
+  explicitly states 10 years of professional experience, which exceeds the 3+ years
+  requirement."* In the shuffled orderings, 9 of the 17 candidates for the AWS job flipped to met
+  this way, raising the scores of weak candidates. See Known limitations.
 - The Claude backend has unit tests for its request shape but hasn't been evaluated yet.
   Results welcome: `shortlist eval --out results/eval_claude.md`.
 
@@ -332,8 +343,12 @@ published results yet.
   removed and flagged. On the eval set this happened zero times, but review the flags.
 - **Scans** have no text layer to check extraction against; grounding is skipped for them, and the local
   backend can't read them (OCR first, or use `--backend claude`).
-- **Small eval set.** 18 synthetic candidates and two jobs is enough to catch regressions, not to certify
-  accuracy. Add graded data from your own (consented, anonymized) hiring before relying on it.
+- **Years-of-experience requirements are judged unreliably by the local model.** The blind profile
+  states total years ("Experience (total 10 yrs)"), and depending on requirement order, the model
+  sometimes counts all of them toward "N+ years of *X*", even when none are in *X*. Check the
+  evidence for those requirements.
+- **Small eval set.** 18 synthetic candidates and six jobs (plus a seven-resume, three-job
+  held-out set) is enough to catch regressions, not to certify accuracy. Add graded data from your own (consented, anonymized) hiring before relying on it.
 
 ## Responsible use
 
