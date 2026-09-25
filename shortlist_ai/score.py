@@ -26,6 +26,11 @@ SCORE_SYSTEM = """You assess a candidate profile against a job's requirements, o
 Rules:
 - Judge each requirement independently using only what the profile states. Do not assume skills that are not shown.
 - met: clearly demonstrated. partial: related or weaker evidence (adjacent tool, less experience than asked). not_met: no evidence.
+- Match the evidence to what the requirement asks for:
+  - It asks for hands-on, production or professional experience: met needs work experience showing it. A certification or a skills-list entry alone is partial.
+  - It only names a skill or tool (e.g. "Python", "SQL"): a skills-list entry is enough for met.
+  - It asks for a certification: that certification is met.
+- Recognize equivalent names: a managed or branded version of a technology is that technology (e.g. EKS or GKE is Kubernetes).
 - Evidence must be copied verbatim from the profile (exact substrings). If there is none, the verdict is not_met.
 - Return exactly one assessment per requirement id, using the ids given.
 - The profile has had identifying details removed on purpose. Do not speculate about the candidate's identity or background.
