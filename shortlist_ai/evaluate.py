@@ -229,6 +229,14 @@ def stability_report(runs: list[EvalRun], expected: dict | None = None) -> list[
            "sensitivity to an irrelevant detail, plus sampling noise for backends that sample.", "",
            "| | min | mean | max |", "|---|---|---|---|"]
     out += [f"| {label} | {' | '.join(vals)} |" for label, vals in rows]
+    misses = []
+    for i, r in enumerate(runs, 1):
+        wrong = [e.job for e in r.job_evals if not e.metrics()["top1"]]
+        wrong += [x.resume for x in r.resume_evals if not x.metrics()["top1"]]
+        if wrong:
+            misses.append(f"run {i}: {', '.join(wrong)}")
+    if misses:
+        out += ["", f"Wrong top pick: {'; '.join(misses)}."]
 
     verdicts: dict[tuple, list[str]] = {}
     scores: dict[tuple, list[float]] = {}
@@ -250,7 +258,7 @@ def stability_report(runs: list[EvalRun], expected: dict | None = None) -> list[
     if changed:
         out += ["", "Verdicts that changed with the ordering:", "",
                 "| Job | Candidate | Requirement | Verdict in each run |", "|---|---|---|---|"]
-        out += [f"| {j} | {c} | `{q}` | {' → '.join(v)} |" for (j, c, q), v in sorted(changed.items())[:40]]
-        if len(changed) > 40:
-            out.append(f"| … | {len(changed) - 40} more | | |")
+        out += [f"| {j} | {c} | `{q}` | {' → '.join(v)} |" for (j, c, q), v in sorted(changed.items())[:100]]
+        if len(changed) > 100:
+            out.append(f"| … | {len(changed) - 100} more | | |")
     return out

@@ -102,3 +102,7 @@ def test_stability_report_counts_verdicts_that_move():
     assert "| sre | cand | `k8s` | met → partial → met |" in text
     assert "| Expected verdicts agreeing (of 1) | 0.0 | 0.7 | 1.0 |" in text
     assert "at most 25.0" in text
+    assert "Wrong top pick" not in text
+
+    runs[1].job_evals[0].ranked_grades[:] = [0]    # run 2 put a non-fit first
+    assert "Wrong top pick: run 2: sre." in "\n".join(stability_report(runs))
