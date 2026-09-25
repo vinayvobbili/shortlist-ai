@@ -36,3 +36,10 @@ experience. This set checks that failure in both directions:
   history that shows it. A certification or a skills-list entry alone is `partial`.
 - A requirement that just **names a skill or tool** is met by a skills-list entry.
 - A requirement **for a certification** is met by that certification.
+
+## Results so far
+
+Used once, for the certification/skills-list scoring rule (commit `4bc7cbb`). Verdict agreement
+was 41/44 both before and after: one fewer too-lenient verdict, one more too-strict. See the main
+README's "A scorer fix, checked on held-out data". **This set has now been seen**, so don't use it
+to justify the next prompt change; add new cases instead.

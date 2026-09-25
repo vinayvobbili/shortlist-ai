@@ -155,31 +155,31 @@ Scored by `local:mlx-community/Qwen3.5-9B-MLX-4bit` · 6 jobs
 
 | # | Job | Fit | Must-haves | Gaps (must-haves not fully met) |
 |---|---|---|---|---|
-| 1 | Cloud Security Engineer (`cloud_security_engineer`) | 100 | 4/4 | — |
-| 2 | Incident Response Engineer (`incident_response_engineer`) | 100 | 4/4 | — |
-| 3 | Data Engineer (AWS) (`data_engineer_aws`) | 36 | 2/6 | Proficiency in SQL; Experience with Apache Spark; Experience with Apache Airflow (self-hosted or MWAA); Hands-on experience with AWS data services such as Glue, EMR, Redshift, or Kinesis |
-| 4 | Senior Data Engineer (GCP) (`senior_data_engineer_gcp`) | 27 | 2/6 | Strong SQL skills; Hands-on experience with BigQuery; Hands-on experience with Dataflow or Apache Beam; Production experience with Apache Airflow |
-| 5 | Data Analyst (`data_analyst`) | 25 | 1/3 | Proficiency in SQL; Experience building dashboards in Tableau, Looker, or Power BI |
+| 1 | Incident Response Engineer (`incident_response_engineer`) | 100 | 4/4 | — |
+| 2 | Cloud Security Engineer (`cloud_security_engineer`) | 88 | 3/4 | Hands-on AWS security experience (IAM, GuardDuty, Security Hub or similar) |
+| 3 | Data Analyst (`data_analyst`) | 25 | 1/3 | Proficiency in SQL; Experience building dashboards in Tableau, Looker, or Power BI |
+| 4 | Data Engineer (AWS) (`data_engineer_aws`) | 23 | 1/6 | 3+ years of professional data engineering experience; Proficiency in SQL; Experience with Apache Spark; Experience with Apache Airflow (self-hosted or MWAA); Hands-on experience with AWS data services such as Glue, EMR, Redshift, or Kinesis |
+| 5 | Senior Data Engineer (GCP) (`senior_data_engineer_gcp`) | 14 | 1/6 | 5+ years of professional data engineering experience; Strong SQL skills; Hands-on experience with BigQuery; Hands-on experience with Dataflow or Apache Beam; Production experience with Apache Airflow |
 | 6 | Frontend Engineer (`frontend_engineer`) | 0 | 0/5 | 2+ years of professional web development experience; JavaScript proficiency; TypeScript proficiency; React experience; Automated testing experience (Jest, Cypress, or Playwright) |
 
-#### 1. Cloud Security Engineer — 100/100
+#### 1. Incident Response Engineer — 100/100
 
-_The candidate strongly meets all must-have requirements with 7 years of security engineering experience, hands-on AWS security skills (including Terraform), Python proficiency, and relevant certifications. They also exceed all nice-to-have requirements with extensive incident response experience, SIEM expertise in Splunk and Sentinel, and Kubernetes skills._
+_The candidate strongly meets all 'must-have' requirements with 7+ years of incident response experience, leadership in investigations, and hands-on skills in SIEMs (Splunk, Sentinel), Python scripting, and SOAR playbook development. They also exceed 'nice-to-have' criteria by possessing relevant certifications (GCIH, OSCP) and practical experience with malware analysis tools (IDA, Ghidra) and cloud security (AWS, Terraform)._
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `security_engineering_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)” |
-| `aws_security_experience` | ✅ met | “AWS Security Specialty”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
-| `infrastructure_as_code` | ✅ met | “Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
-| `python` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
-| `aws_security_certification` | ✅ met | “Certifications: GCIH, OSCP, AWS Security Specialty” |
-| `incident_response_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Led IR for 3 ransomware incidents; wrote postmortems for exec staff” |
-| `siem_experience` | ✅ met | “Tuned Splunk correlation searches; reduced false positives ~40%”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
-| `kubernetes_security` | ✅ met | “Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `security_ops_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Led IR for 3 ransomware incidents” |
+| `incident_investigation_leadership` | ✅ met | “Led IR for 3 ransomware incidents; wrote postmortems for exec staff” |
+| `siem_experience` | ✅ met | “Tuned Splunk correlation searches”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
+| `python_scripting` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%”<br>“Skills: Python” |
+| `soar_playbook_development` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%” |
+| `malware_analysis` | ✅ met | “Mentored 4 junior analysts on malware triage (IDA, Ghidra)” |
+| `cloud_security_experience` | ✅ met | “Certifications: GCIH, OSCP, AWS Security Specialty”<br>“Skills: ... Terraform, k8s ...” |
+| `security_certifications` | ✅ met | “Certifications: GCIH, OSCP, AWS Security Specialty” |
 
-Full report: [`results/example_jobs_local.md`](results/example_jobs_local.md). The first row is
-the lenient judgment discussed under [Evaluation](#evaluation): the evidence column shows it was a
-certification and a skills list, which you can see and discount.
+Full report: [`results/example_jobs_local.md`](results/example_jobs_local.md). Evidence still needs
+a human eye: `cloud_security_experience` above is a nice-to-have marked met from a certification
+and a skills list, which the scorer's rules say should be partial.
 
 </details>
 
@@ -208,27 +208,19 @@ Results with the local backend (Qwen3.5-9B, 4-bit, MLX, on an M4 Mac mini), from
 | Data Engineer (AWS) | 1.00 | 1.00 | 1.00 | yes |
 | Data Analyst | 1.00 | 0.96 | 1.00 | yes |
 | Frontend Engineer | 0.94 | 0.99 | 0.33 ¹ | yes |
-| Cloud Security Engineer | 0.84 | 0.85 | 0.67 ¹ | no |
-| **Mean** | **0.96** | **0.96** | **0.83** | **5/6** |
+| Cloud Security Engineer | 1.00 | 1.00 | 0.67 ¹ | yes |
+| **Mean** | **0.99** | **0.99** | **0.83** | **6/6** |
 
 | Jobs for each resume (13 resumes that fit at least one job) | |
 |---|---|
-| Best-fitting job ranked first | 12/13 |
-| Mean NDCG@3 | 0.99 |
+| Best-fitting job ranked first | 13/13 |
+| Mean NDCG@3 | 1.00 |
 
 ¹ At the ceiling: only one (frontend) or two (cloud security) candidates are graded 2 or higher.
 
 **Read this as "no regressions", not a benchmark.** The set is small and synthetic, and the same
 people wrote it and the tool. What it does show:
 
-- **Both misses are one judgment call.** The model gave Priya 100 for Cloud Security Engineer
-  (graded 2), ranking Priya above Nadia, who does this job. The evidence shows why:
-  *hands-on AWS security experience* was marked met on the strength of an AWS certification plus
-  "Terraform" in the skills list, and *Kubernetes security* on "k8s" in the skills list. The same
-  score then tied with Incident Response (Priya's best fit) in the job ranking, and the tie went to the
-  alphabetically first job. The scorer is too lenient with certifications and keyword lists as
-  evidence of hands-on work. That's a prompt change to make, and to check on new data rather than
-  tune on this set.
 - **Near-misses land where they should in both directions.** Oliver (AWS) ranks the AWS role
   first; Rahul and Amara (GCP) rank the GCP role first. For the GCP job, Oliver ranks below both
   GCP engineers and is flagged for the missing BigQuery and Dataflow must-haves.
@@ -243,6 +235,42 @@ people wrote it and the tool. What it does show:
   a grade-1 one. The eval scores every candidate, so this doesn't affect the metrics above.
 - The Claude backend has unit tests for its request shape but hasn't been evaluated yet.
   Results welcome: `shortlist eval --out results/eval_claude.md`.
+
+### A scorer fix, checked on held-out data
+
+The first version of the scorer missed one call on this set: it gave Priya 100 for Cloud Security
+Engineer (graded 2) and ranked Priya above Nadia, who does that job. The evidence showed why:
+*hands-on AWS security experience* was marked met because of an AWS certification plus "Terraform"
+in the skills list. The same score tied with Incident Response, Priya's best fit, so the job
+ranking was wrong too.
+
+The fix is a rule in the scoring prompt. If a requirement asks for **hands-on, production or
+professional experience**, a certification or skills-list entry alone is `partial`. If it only
+**names a tool**, a skills-list entry is enough. The results above are with the fix: both misses
+are gone and nothing else moved. But the fix was designed around this exact case, so that is
+expected, not evidence.
+
+The evidence is [`eval/heldout/`](eval/heldout/): seven new resumes and three new jobs, committed
+with expected per-requirement verdicts **before** the fix and before any model saw them. Each job
+has a candidate whose certifications and skills list match but whose work history doesn't, plus
+cases where being too strict would be wrong.
+
+| Held-out set | Before the fix | After the fix |
+|---|---|---|
+| Candidate and job rankings | all correct | all correct |
+| Requirement verdicts matching expected | 41/44 | 41/44 |
+| ... too lenient | 1 | 0 |
+| ... too strict | 2 | 3 |
+| Score of the certificate-heavy candidates (sysadmin, ML analyst, IT support) | 47, 67, 57 | 37, 57, 57 |
+
+**Honest reading: the fix trades leniency for strictness without improving accuracy.** It widens
+the gap between real and certificate-only experience, which is the behavior it was meant to
+produce. It also marked a Terraform nice-to-have as partial for a candidate who lists Terraform,
+which breaks its own "only names a tool" rule. With 44 verdicts and no measurement of run-to-run
+noise, a difference of one or two isn't meaningful. The held-out set has now been looked at,
+so the next change needs fresh cases. Before/after reports:
+[`results/heldout_local_before.md`](results/heldout_local_before.md),
+[`results/heldout_local.md`](results/heldout_local.md).
 
 ## Fairness testing
 
