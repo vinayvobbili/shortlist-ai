@@ -1,0 +1,25 @@
+{
+  "title": "Security Operations Analyst",
+  "requirements": [
+    {
+      "id": "years_soc",
+      "description": "3+ years in a SOC or security operations role",
+      "kind": "must_have"
+    },
+    {
+      "id": "siem",
+      "description": "Hands-on experience with a SIEM (Splunk, Microsoft Sentinel or QRadar)",
+      "kind": "must_have"
+    },
+    {
+      "id": "alert_triage",
+      "description": "Alert triage and incident response",
+      "kind": "must_have"
+    },
+    {
+      "id": "security_cert",
+      "description": "CompTIA Security+ or an equivalent security certification",
+      "kind": "nice_to_have"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "backend_engineer": {
+    "y01_teresa_alvarez": {
+      "years_backend": "not_met"
+    },
+    "y02_kwame_mensah": {
+      "years_backend": "partial",
+      "python_or_java": "met",
+      "relational_db": "met"
+    },
+    "y03_ines_carvalho": {
+      "years_backend": "met",
+      "python_or_java": "met",
+      "relational_db": "met"
+    },
+    "y04_arjun_nair": {
+      "years_backend": "met"
+    },
+    "y05_leila_ahmadi": {
+      "years_backend": "not_met"
+    },
+    "y06_marek_novak": {
+      "years_backend": "not_met"
+    },
+    "y07_olivia_brennan": {
+      "years_backend": "not_met"
+    },
+    "y08_tomasz_wojcik": {
+      "years_backend": "not_met"
+    },
+    "y09_noor_rahman": {
+      "years_backend": "not_met"
+    }
+  },
+  "soc_analyst": {
+    "y01_teresa_alvarez": {
+      "years_soc": "not_met"
+    },
+    "y02_kwame_mensah": {
+      "years_soc": "not_met"
+    },
+    "y03_ines_carvalho": {
+      "years_soc": "not_met"
+    },
+    "y04_arjun_nair": {
+      "years_soc": "not_met"
+    },
+    "y05_leila_ahmadi": {
+      "years_soc": "partial",
+      "siem": "met",
+      "alert_triage": "met",
+      "security_cert": "met"
+    },
+    "y06_marek_novak": {
+      "years_soc": "met"
+    },
+    "y07_olivia_brennan": {
+      "years_soc": "not_met"
+    },
+    "y08_tomasz_wojcik": {
+      "years_soc": "not_met"
+    },
+    "y09_noor_rahman": {
+      "years_soc": "not_met"
+    }
+  },
+  "fpa_analyst": {
+    "y01_teresa_alvarez": {
+      "years_fpa": "not_met"
+    },
+    "y02_kwame_mensah": {
+      "years_fpa": "not_met"
+    },
+    "y03_ines_carvalho": {
+      "years_fpa": "not_met"
+    },
+    "y04_arjun_nair": {
+      "years_fpa": "not_met"
+    },
+    "y05_leila_ahmadi": {
+      "years_fpa": "not_met"
+    },
+    "y06_marek_novak": {
+      "years_fpa": "not_met"
+    },
+    "y07_olivia_brennan": {
+      "years_fpa": "met"
+    },
+    "y08_tomasz_wojcik": {
+      "years_fpa": "partial",
+      "excel_modeling": "met",
+      "budgets_forecasts": "met"
+    },
+    "y09_noor_rahman": {
+      "years_fpa": "not_met"
+    }
+  }
+}

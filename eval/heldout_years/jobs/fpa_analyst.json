@@ -1,0 +1,30 @@
+{
+  "title": "Financial Analyst (FP&A)",
+  "requirements": [
+    {
+      "id": "years_fpa",
+      "description": "4+ years in financial planning and analysis (FP&A) or corporate finance",
+      "kind": "must_have"
+    },
+    {
+      "id": "excel_modeling",
+      "description": "Advanced Excel financial modeling",
+      "kind": "must_have"
+    },
+    {
+      "id": "budgets_forecasts",
+      "description": "Building annual budgets and forecasts",
+      "kind": "must_have"
+    },
+    {
+      "id": "sql",
+      "description": "SQL",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "cpa_cfa",
+      "description": "CPA or CFA",
+      "kind": "nice_to_have"
+    }
+  ]
+}

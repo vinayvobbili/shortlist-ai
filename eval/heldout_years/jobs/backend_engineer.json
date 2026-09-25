@@ -1,0 +1,30 @@
+{
+  "title": "Backend Software Engineer",
+  "requirements": [
+    {
+      "id": "years_backend",
+      "description": "5+ years of professional backend software development",
+      "kind": "must_have"
+    },
+    {
+      "id": "python_or_java",
+      "description": "Python or Java",
+      "kind": "must_have"
+    },
+    {
+      "id": "relational_db",
+      "description": "Hands-on experience with PostgreSQL or MySQL",
+      "kind": "must_have"
+    },
+    {
+      "id": "rest_apis",
+      "description": "Designing REST APIs",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "docker",
+      "description": "Docker",
+      "kind": "nice_to_have"
+    }
+  ]
+}
