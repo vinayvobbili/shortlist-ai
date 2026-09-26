@@ -1,0 +1,55 @@
+{
+  "title": "Security Engineer",
+  "requirements": [
+    {
+      "id": "threat_modeling",
+      "description": "Threat modeling for new services",
+      "kind": "must_have"
+    },
+    {
+      "id": "cloud_iam",
+      "description": "Designing cloud IAM policies (AWS or GCP)",
+      "kind": "must_have"
+    },
+    {
+      "id": "vuln_mgmt",
+      "description": "Running a vulnerability management program",
+      "kind": "must_have"
+    },
+    {
+      "id": "appsec",
+      "description": "Application security reviews",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_security",
+      "description": "3+ years of security engineering experience",
+      "kind": "must_have"
+    },
+    {
+      "id": "python",
+      "description": "Python",
+      "kind": "must_have"
+    },
+    {
+      "id": "siem",
+      "description": "SIEM detection engineering (Splunk or Sentinel)",
+      "kind": "must_have"
+    },
+    {
+      "id": "terraform",
+      "description": "Terraform",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "cissp_oscp",
+      "description": "CISSP or OSCP",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "kubernetes",
+      "description": "Kubernetes",
+      "kind": "nice_to_have"
+    }
+  ]
+}

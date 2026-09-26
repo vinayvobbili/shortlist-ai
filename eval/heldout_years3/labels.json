@@ -1,0 +1,21 @@
+{
+  "security_engineer": {
+    "a01_hiroshi_sato": 3,
+    "a07_kofi_asante": 2,
+    "a02_valentina_rossi": 1,
+    "a09_marco_bianchi": 1
+  },
+  "data_engineer": {
+    "a04_mei_lin": 3,
+    "a08_ingrid_larsen": 2,
+    "a03_omar_khalil": 1,
+    "a05_tunde_adebayo": 1
+  },
+  "site_reliability_engineer": {
+    "a10_ruth_okonkwo": 3,
+    "a02_valentina_rossi": 3,
+    "a07_kofi_asante": 2,
+    "a05_tunde_adebayo": 1,
+    "a09_marco_bianchi": 1
+  }
+}

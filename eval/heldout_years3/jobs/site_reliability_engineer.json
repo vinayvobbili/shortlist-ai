@@ -1,0 +1,55 @@
+{
+  "title": "Site Reliability Engineer",
+  "requirements": [
+    {
+      "id": "kubernetes",
+      "description": "Running Kubernetes in production",
+      "kind": "must_have"
+    },
+    {
+      "id": "terraform",
+      "description": "Terraform",
+      "kind": "must_have"
+    },
+    {
+      "id": "observability",
+      "description": "Prometheus and Grafana",
+      "kind": "must_have"
+    },
+    {
+      "id": "incident_mgmt",
+      "description": "Leading incident response and postmortems",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_sre",
+      "description": "3+ years in site reliability or infrastructure engineering",
+      "kind": "must_have"
+    },
+    {
+      "id": "linux",
+      "description": "Linux",
+      "kind": "must_have"
+    },
+    {
+      "id": "go_or_python",
+      "description": "Go or Python",
+      "kind": "must_have"
+    },
+    {
+      "id": "slo",
+      "description": "Defining SLOs",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "aws",
+      "description": "AWS",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "chaos",
+      "description": "Chaos engineering",
+      "kind": "nice_to_have"
+    }
+  ]
+}

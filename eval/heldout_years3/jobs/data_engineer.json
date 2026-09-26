@@ -1,0 +1,55 @@
+{
+  "title": "Data Engineer",
+  "requirements": [
+    {
+      "id": "python",
+      "description": "Python",
+      "kind": "must_have"
+    },
+    {
+      "id": "sql",
+      "description": "SQL",
+      "kind": "must_have"
+    },
+    {
+      "id": "spark",
+      "description": "Apache Spark",
+      "kind": "must_have"
+    },
+    {
+      "id": "airflow",
+      "description": "Apache Airflow",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_de",
+      "description": "4+ years of professional data engineering experience",
+      "kind": "must_have"
+    },
+    {
+      "id": "warehouse",
+      "description": "A cloud data warehouse (Snowflake, BigQuery or Redshift)",
+      "kind": "must_have"
+    },
+    {
+      "id": "data_modeling",
+      "description": "Dimensional data modeling",
+      "kind": "must_have"
+    },
+    {
+      "id": "kafka",
+      "description": "Kafka",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "dbt",
+      "description": "dbt",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "data_quality",
+      "description": "Data quality testing",
+      "kind": "nice_to_have"
+    }
+  ]
+}

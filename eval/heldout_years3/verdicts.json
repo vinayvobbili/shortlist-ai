@@ -1,0 +1,95 @@
+{
+  "security_engineer": {
+    "a01_hiroshi_sato": {
+      "years_security": "met"
+    },
+    "a02_valentina_rossi": {
+      "years_security": "not_met"
+    },
+    "a03_omar_khalil": {
+      "years_security": "not_met"
+    },
+    "a04_mei_lin": {
+      "years_security": "not_met"
+    },
+    "a05_tunde_adebayo": {
+      "years_security": "not_met"
+    },
+    "a06_sarah_goldberg": {
+      "years_security": "not_met"
+    },
+    "a07_kofi_asante": {
+      "years_security": "partial"
+    },
+    "a08_ingrid_larsen": {
+      "years_security": "not_met"
+    },
+    "a09_marco_bianchi": {
+      "years_security": "not_met"
+    },
+    "a10_ruth_okonkwo": {
+      "years_security": "not_met"
+    }
+  },
+  "data_engineer": {
+    "a01_hiroshi_sato": {
+      "years_de": "not_met"
+    },
+    "a02_valentina_rossi": {
+      "years_de": "not_met"
+    },
+    "a03_omar_khalil": {
+      "years_de": "not_met"
+    },
+    "a04_mei_lin": {
+      "years_de": "met"
+    },
+    "a05_tunde_adebayo": {
+      "years_de": "not_met"
+    },
+    "a06_sarah_goldberg": {
+      "years_de": "not_met"
+    },
+    "a07_kofi_asante": {
+      "years_de": "not_met"
+    },
+    "a08_ingrid_larsen": {
+      "years_de": "partial"
+    },
+    "a09_marco_bianchi": {
+      "years_de": "not_met"
+    },
+    "a10_ruth_okonkwo": {
+      "years_de": "not_met"
+    }
+  },
+  "site_reliability_engineer": {
+    "a01_hiroshi_sato": {
+      "years_sre": "not_met"
+    },
+    "a02_valentina_rossi": {
+      "years_sre": "met"
+    },
+    "a03_omar_khalil": {
+      "years_sre": "not_met"
+    },
+    "a04_mei_lin": {
+      "years_sre": "not_met"
+    },
+    "a05_tunde_adebayo": {
+      "years_sre": "not_met"
+    },
+    "a06_sarah_goldberg": {
+      "years_sre": "not_met"
+    },
+    "a07_kofi_asante": {
+      "years_sre": "partial"
+    },
+    "a08_ingrid_larsen": {
+      "years_sre": "not_met"
+    },
+    "a10_ruth_okonkwo": {
+      "years_sre": "met"
+    }
+  }
+}
