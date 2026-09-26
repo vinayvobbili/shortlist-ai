@@ -94,7 +94,9 @@ class CandidateAssessment(BaseModel):
 
 class RoleJudgment(BaseModel):
     role: int = Field(description="The role's number as listed")
-    in_field: bool = Field(description="True if this role's work is in the field the requirement names")
+    fit: Literal["main", "touches", "no"] = Field(
+        description="main: the role's main work is in the field. touches: it involves some of the field's "
+                    "tasks, but its main work is something else. no: unrelated")
     reason: str = Field(description="A few words")
 
 

@@ -38,17 +38,18 @@ def test_union_months_counts_overlaps_once():
 
 
 class RolesBackend:
-    """Marks the given role numbers as in the field; everything else as not."""
-    def __init__(self, in_field):
-        self.in_field, self.calls = set(in_field), []
+    """Marks the given role numbers as main work in the field, and `touches` as touching it."""
+    def __init__(self, main, touches=()):
+        self.main, self.touches, self.calls = set(main), set(touches), []
 
     def structured(self, system, content, output_type):
         self.calls.append(output_type.__name__)
         if output_type is RoleRelevance:
             n = len(re.findall(r"^\d+\. ", content[0]["text"], re.M))
             return RoleRelevance(field="security engineering", roles=[
-                RoleJudgment(role=i, in_field=i in self.in_field, reason="") for i in range(1, n + 1)] + [
-                RoleJudgment(role=99, in_field=True, reason="out of range")])
+                RoleJudgment(role=i, fit="main" if i in self.main else "touches" if i in self.touches else "no",
+                             reason="") for i in range(1, n + 1)] + [
+                RoleJudgment(role=99, fit="main", reason="out of range")])
         # Main scorer: claims the years requirement is met, as the model used to.
         return CandidateAssessment(assessments=[RequirementAssessment(
             requirement_id="years_security", verdict="met", evidence=[], reasoning="10 years of experience")],
@@ -63,6 +64,15 @@ def test_years_add_up_across_roles(resume):
     assert a.verdict == "met" and "8 yrs 2 mos" in a.reasoning and "across 2 roles" in a.reasoning
     a = assess_years(YEARS, 4, roles, RolesBackend(set()))
     assert a.verdict == "not_met" and a.evidence == []
+
+
+def test_roles_that_only_touch_the_field_dont_count(resume):
+    roles = blind_roles(resume, TODAY)
+    a = assess_years(YEARS, 4, roles, RolesBackend(set(), touches={1, 2}))
+    assert a.verdict == "not_met" and a.evidence == []
+    assert "don't count: Senior Security Engineer at Northwind Health, Security Analyst II" in a.reasoning
+    a = assess_years(YEARS, 4, roles, RolesBackend({1}, touches={2}))
+    assert a.verdict == "met" and "4 yrs 6 mos" in a.reasoning and "don't count: Security Analyst II" in a.reasoning
 
 
 def test_years_without_roles_skip_the_model():
