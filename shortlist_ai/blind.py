@@ -18,6 +18,7 @@ them (writing style, company names and activities can still carry signal).
 """
 
 import re
+from dataclasses import dataclass
 from datetime import date
 
 from .schema import Resume
@@ -100,7 +101,7 @@ def total_experience_months(resume: Resume, today: date | None = None) -> int:
     return total
 
 
-def blind_profile(resume: Resume, today: date | None = None) -> str:
+def _cleaner(resume: Resume):
     name_tokens = {t for t in re.split(r"[\s,.]+", resume.full_name) if len(t) > 1}
     # Also scrub exact contact values in case the regexes miss an unusual format.
     literals = [v for v in (resume.email, resume.phone, *[link.url for link in resume.links]) if v]
@@ -109,7 +110,35 @@ def blind_profile(resume: Resume, today: date | None = None) -> str:
         for lit in literals:
             text = text.replace(lit, "[redacted]")
         return scrub(text, name_tokens)
+    return clean
 
+
+@dataclass
+class Role:
+    """One job as the blind profile shows it."""
+    heading: str                    # "Data Engineer at Litware"
+    line: str                       # heading plus duration, exactly as in the profile
+    highlights: list[str]
+    span: tuple[int, int] | None    # [start, end) in months; None when the start date is unknown
+
+
+def blind_roles(resume: Resume, today: date | None = None) -> list[Role]:
+    clean, roles = _cleaner(resume), []
+    t = today or date.today()
+    for job in resume.experience:
+        status = "current role" if job.is_current else "past role"
+        months = months_between(job.start_date, job.end_date, t)
+        heading = f"{clean(job.title)} at {clean(job.company)}"
+        begin = _parse_ym(job.start_date)
+        span = None if begin is None or months is None else (begin[0] * 12 + begin[1],
+                                                              begin[0] * 12 + begin[1] + months)
+        roles.append(Role(heading, f"{heading} ({format_duration(months)}, {status})",
+                          [clean(h) for h in job.highlights], span))
+    return roles
+
+
+def blind_profile(resume: Resume, today: date | None = None) -> str:
+    clean = _cleaner(resume)
     lines = ["CANDIDATE PROFILE"]
     if resume.summary:
         lines += ["", "Summary:", clean(resume.summary)]
@@ -117,11 +146,9 @@ def blind_profile(resume: Resume, today: date | None = None) -> str:
     lines += ["", f"Experience (total {format_duration(total_experience_months(resume, today))}):"]
     if not resume.experience:
         lines.append("- none listed")
-    for job in resume.experience:
-        status = "current role" if job.is_current else "past role"
-        duration = format_duration(months_between(job.start_date, job.end_date, today))
-        lines.append(f"- {clean(job.title)} at {clean(job.company)} ({duration}, {status})")
-        lines += [f"  * {clean(h)}" for h in job.highlights]
+    for role in blind_roles(resume, today):
+        lines.append(f"- {role.line}")
+        lines += [f"  * {h}" for h in role.highlights]
 
     lines += ["", "Education:"]
     if not resume.education:

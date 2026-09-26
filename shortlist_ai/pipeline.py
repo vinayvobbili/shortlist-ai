@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .backends import Backend
-from .blind import blind_profile
+from .blind import blind_profile, blind_roles
 from .extract import Cache, extract_resume
 from .prefilter import bm25_rank
 from .schema import CandidateResult, JobSpec, Resume
@@ -33,6 +33,7 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
 
     # Stage 1: extraction (cached per file).
     profiles: dict[str, tuple[Path, str]] = {}
+    roles = {}
     extraction_flags: dict[str, list[str]] = {}
     for path in resume_paths:
         candidate_id = path.stem
@@ -40,6 +41,7 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
             progress(f"extract  {candidate_id}")
             extracted = extract_resume(path, backend, cache)
             profiles[candidate_id] = (path, profile_for(extracted.resume, blind))
+            roles[candidate_id] = blind_roles(extracted.resume)
             extraction_flags[candidate_id] = extracted.flags
         except Exception as e:  # one bad file shouldn't sink the whole run
             errors[candidate_id] = f"{type(e).__name__}: {e}"
@@ -57,7 +59,7 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
         candidate_id, (path, profile) = item
         progress(f"score    {candidate_id}")
         try:
-            result = score_candidate(candidate_id, path.name, job, profile, backend)
+            result = score_candidate(candidate_id, path.name, job, profile, backend, roles[candidate_id])
             result.flags = extraction_flags[candidate_id] + result.flags
             return result
         except Exception as e:
@@ -109,13 +111,15 @@ def match_jobs(resume_path: Path, jobs: dict[str, JobSpec], backend: Backend, *,
     progress(f"extract  {resume_path.stem}")
     extracted = extract_resume(resume_path, backend, cache)
     profile = profile_for(extracted.resume)
+    roles = blind_roles(extracted.resume)
     errors: dict[str, str] = {}
 
     def work(item):
         job_id, job = item
         progress(f"score    {job_id}")
         try:
-            return JobMatch(job_id, job, score_candidate(resume_path.stem, resume_path.name, job, profile, backend))
+            return JobMatch(job_id, job, score_candidate(resume_path.stem, resume_path.name, job, profile, backend,
+                                                     roles))
         except Exception as e:
             errors[job_id] = f"{type(e).__name__}: {e}"
             return None

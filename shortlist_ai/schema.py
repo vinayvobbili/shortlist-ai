@@ -92,6 +92,17 @@ class CandidateAssessment(BaseModel):
     summary: str = Field(description="Two sentences: main strengths and main gaps for this role")
 
 
+class RoleJudgment(BaseModel):
+    role: int = Field(description="The role's number as listed")
+    in_field: bool = Field(description="True if this role's work is in the field the requirement names")
+    reason: str = Field(description="A few words")
+
+
+class RoleRelevance(BaseModel):
+    field: str = Field(description="The field the requirement asks for, in a few words")
+    roles: list[RoleJudgment] = Field(description="One judgment per listed role")
+
+
 class ScoredRequirement(RequirementAssessment):
     kind: Literal["must_have", "nice_to_have"]
     evidence_verified: bool = Field(description="Every evidence quote was found in the candidate profile")

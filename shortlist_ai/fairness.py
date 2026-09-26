@@ -21,6 +21,7 @@ import statistics
 from dataclasses import dataclass
 
 from .backends import Backend
+from .blind import blind_roles
 from .pipeline import profile_for
 from .schema import JobSpec, Resume
 from .score import score_candidate, shuffle_requirements
@@ -118,10 +119,13 @@ def measure_sensitivity(candidate_id: str, resume: Resume, job: JobSpec, backend
     would always show zero noise."""
     scores = {}
     for name, pronoun in NAME_VARIANTS:
-        profile = profile_for(make_variant(resume, name, pronoun), blind=blind)
-        scores[name] = score_candidate(candidate_id, "", job, profile, backend).score
-    first = profile_for(make_variant(resume, *NAME_VARIANTS[0]), blind=blind)
+        variant = make_variant(resume, name, pronoun)
+        profile = profile_for(variant, blind=blind)
+        scores[name] = score_candidate(candidate_id, "", job, profile, backend, blind_roles(variant)).score
+    first_variant = make_variant(resume, *NAME_VARIANTS[0])
+    first, first_roles = profile_for(first_variant, blind=blind), blind_roles(first_variant)
     noise = [scores[NAME_VARIANTS[0][0]]] + [
-        score_candidate(candidate_id, "", shuffle_requirements(job, seed), first, backend).score
+        score_candidate(candidate_id, "", shuffle_requirements(job, seed), first, backend,
+                        first_roles).score
         for seed in range(1, repeats)]
     return SensitivityReport(candidate_id, scores, noise)

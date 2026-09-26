@@ -9,13 +9,17 @@ here, deterministically, so scores are auditable and weights are adjustable:
 
 Evidence that can't be found in the profile is treated as hallucinated: the
 verdict is downgraded one level and the candidate is flagged for review.
+
+"N+ years of X" requirements are computed in code from role durations; see years.py.
 """
 
 import random
 import re
 
 from .backends import Backend
+from .blind import Role
 from .schema import CandidateAssessment, CandidateResult, JobSpec, RequirementAssessment, ScoredRequirement
+from .years import assess_years, min_years
 
 WEIGHTS = {"must_have": 3.0, "nice_to_have": 1.0}
 CREDIT = {"met": 1.0, "partial": 0.5, "not_met": 0.0}
@@ -109,6 +113,11 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
 
 
 def score_candidate(candidate_id: str, source_file: str, job: JobSpec, profile: str,
-                    backend: Backend) -> CandidateResult:
+                    backend: Backend, roles: list[Role] | None = None) -> CandidateResult:
+    """With `roles` (the profile's roles), "N+ years of X" verdicts are computed in code."""
     assessment = backend.structured(SCORE_SYSTEM, build_prompt(job, profile), CandidateAssessment)
+    if roles is not None:
+        years = {r.id: (r, n) for r in job.requirements if (n := min_years(r.description)) is not None}
+        computed = [assess_years(r, n, roles, backend) for r, n in years.values()]
+        assessment.assessments = [a for a in assessment.assessments if a.requirement_id not in years] + computed
     return finalize(candidate_id, source_file, job, profile, assessment)
