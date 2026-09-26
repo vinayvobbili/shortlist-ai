@@ -108,7 +108,9 @@ def cmd_jobs(args, backend, cache):
 
 
 def cmd_fairness(args, backend, cache):
-    from .fairness import leak_check, measure_sensitivity
+    import statistics
+
+    from .fairness import NAME_VARIANTS, leak_check, measure_sensitivity
 
     paths = _resume_paths(args.resumes)
     resumes = {}
@@ -130,18 +132,38 @@ def cmd_fairness(args, backend, cache):
 
     if args.measure:
         job = _job(args, backend, cache)
-        sample = list(resumes.items())[: args.sample]
+        if args.candidates:
+            missing = set(args.candidates) - set(resumes)
+            if missing:
+                sys.exit(f"unknown candidates: {', '.join(sorted(missing))}")
+            sample = [(cid, resumes[cid]) for cid in args.candidates]
+        else:
+            sample = list(resumes.items())[: args.sample]
         mode = "name shown" if not args.blind_measure else "blind"
         out += ["", f"## 2. Score sensitivity ({mode}, {_backend_desc(backend)})", "",
-                "| Candidate | Score range across names | Name std. dev. | Re-score noise range |",
-                "|---|---|---|---|"]
+                f"Job: {job.title}. Each candidate is scored under {len(NAME_VARIANTS)} names, and under the "
+                f"first name with the requirements in {args.repeats} orders (model noise).", "",
+                "| Candidate | Score range across names | Name std. dev. | Mean, she − he names "
+                "| Score range across orders |",
+                "|---|---|---|---|---|"]
+        reports = []
         for cid, resume in sample:
             _progress(f"sensitivity {cid}")
             rep = measure_sensitivity(cid, resume, job, backend, repeats=args.repeats, blind=args.blind_measure)
+            reports.append(rep)
             out.append(f"| {cid} | {min(rep.scores_by_name.values()):.0f}–{max(rep.scores_by_name.values()):.0f} "
-                       f"({rep.name_spread:.1f}) | {rep.name_stdev:.1f} | {rep.noise_spread:.1f} |")
-        out += ["", "Name spread well above the re-score noise suggests the model reacts to perceived identity, "
-                "which is what blinding prevents."]
+                       f"({rep.name_spread:.1f}) | {rep.name_stdev:.1f} | {rep.gender_gap:+.1f} "
+                       f"| {min(rep.noise_scores):.0f}–{max(rep.noise_scores):.0f} ({rep.noise_spread:.1f}) |")
+        out += ["", "Score by name, minus that candidate's mean across names:", "",
+                "| Name | " + " | ".join(r.candidate_id for r in reports) + " | Mean |",
+                "|---|" + "---|" * (len(reports) + 1)]
+        for name, pronoun in NAME_VARIANTS:
+            diffs = [r.scores_by_name[name] - statistics.mean(r.scores_by_name.values()) for r in reports]
+            out.append(f"| {name} ({pronoun}) | " + " | ".join(f"{d:+.1f}" for d in diffs)
+                       + f" | {statistics.mean(diffs):+.1f} |")
+        out += ["", "A name spread well above the spread across orders, or a name or gender that is "
+                "consistently above or below the mean across candidates, suggests the model reacts to "
+                "perceived identity, which is what blinding prevents."]
     _write("\n".join(out) + "\n", args.out)
     _cost_note(backend)
     if leaks:
@@ -201,8 +223,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("resumes", type=Path, help="Folder of resumes")
     p.add_argument("--measure", action="store_true", help="Also measure score sensitivity (costs model calls)")
     p.add_argument("--blind-measure", action="store_true", help="Measure with blinding on instead of names shown")
-    p.add_argument("--sample", type=int, default=3, help="Resumes to measure")
-    p.add_argument("--repeats", type=int, default=3, help="Re-scores used to estimate noise")
+    p.add_argument("--sample", type=int, default=3, help="Resumes to measure (the first N)")
+    p.add_argument("--candidates", nargs="+", metavar="ID",
+                   help="Resumes to measure, by file stem (instead of --sample)")
+    p.add_argument("--repeats", type=int, default=10,
+                   help="Requirement orders used to estimate noise (default: as many as there are names)")
     p.set_defaults(func=cmd_fairness)
 
     p = sub.add_parser("eval", parents=[common], help="Score ranking quality against graded labels")

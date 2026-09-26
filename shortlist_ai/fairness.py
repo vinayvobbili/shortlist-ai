@@ -7,9 +7,11 @@ check whether anything downstream changes.
    cannot treat the variants differently. Any difference is a leak to fix.
 
 2. Sensitivity measurement (optional, costs model calls): score the same variants
-   with the name *shown* to the model, and compare the score spread with the
-   spread from simply re-scoring one variant (model noise). This quantifies what
-   blinding protects against for a given backend.
+   with the name *shown* to the model (the blind profile plus a "Name:" line, so the
+   name is the only difference), and compare the score spread with the spread from
+   re-scoring one variant with the requirements reordered (model noise). Both use
+   the same number of scores, since a range grows with the number of samples. This
+   quantifies what blinding protects against for a given backend.
 
 The names follow the audit-study tradition (Bertrand & Mullainathan, 2004 and
 later work): names that readers commonly associate with different genders and
@@ -110,13 +112,20 @@ class SensitivityReport:
     def name_stdev(self) -> float:
         return statistics.pstdev(self.scores_by_name.values())
 
+    @property
+    def gender_gap(self) -> float:
+        """Mean score for names paired with "she" minus the mean for names paired with "he"."""
+        pronoun = dict(NAME_VARIANTS)
+        by = {p: [s for n, s in self.scores_by_name.items() if pronoun[n] == p] for p in ("she", "he")}
+        return statistics.mean(by["she"]) - statistics.mean(by["he"])
+
 
 def measure_sensitivity(candidate_id: str, resume: Resume, job: JobSpec, backend: Backend,
-                        repeats: int = 3, blind: bool = False) -> SensitivityReport:
-    """Score each name variant (name visible unless blind=True), plus `repeats`
-    re-scores of the first variant to estimate model noise. The re-scores list the requirements
-    in a different order: greedy local decoding repeats itself exactly, so identical re-scores
-    would always show zero noise."""
+                        repeats: int = len(NAME_VARIANTS), blind: bool = False) -> SensitivityReport:
+    """Score each name variant (name visible unless blind=True), and the first variant in
+    `repeats` requirement orders (the first as written) to estimate model noise. Reordering is
+    the noise measure because greedy local decoding repeats itself exactly, so identical
+    re-scores would always show zero noise."""
     scores = {}
     for name, pronoun in NAME_VARIANTS:
         variant = make_variant(resume, name, pronoun)
