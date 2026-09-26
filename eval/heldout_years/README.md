@@ -37,3 +37,10 @@ candidates cover three cases:
 - Some years in the field but fewer than asked: `partial`. None: `not_met`.
 - The career-changers' relevant roles are current, so their durations grow. The labels assume the
   eval runs before September 2027, when the shortest of them (the SOC analyst's) reaches 3 years.
+
+## Results so far
+
+Used once, to test removing the "Experience (total N yrs)" line from the blind profile (commit
+`2ba1452`, reverted). Expected verdicts matched 34.3 of 36 on average both with and without the
+line. See the main README's "A fix that didn't work". **This set has now been seen**, so the next
+change needs fresh cases.

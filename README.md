@@ -248,7 +248,7 @@ people wrote it and the tool. What it does show:
   first. When it comes later in the list, it often marks the requirement met: *"The profile
   explicitly states 10 years of professional experience, which exceeds the 3+ years
   requirement."* In the shuffled orderings, 9 of the 17 candidates for the AWS job flipped to met
-  this way, raising the scores of weak candidates. See Known limitations.
+  this way, raising the scores of weak candidates. See "A fix that didn't work" below.
 - The Claude backend has unit tests for its request shape but hasn't been evaluated yet.
   Results welcome: `shortlist eval --out results/eval_claude.md`.
 
@@ -312,6 +312,42 @@ The held-out set has now been looked at, so the next change needs fresh cases. B
 [`results/heldout_local_before.md`](results/heldout_local_before.md),
 [`results/heldout_local.md`](results/heldout_local.md).
 
+### A fix that didn't work: hiding the total years
+
+The obvious suspect for the "N+ years" problem was the profile itself. It opens the experience
+section with `Experience (total 10 yrs)`, and the nurse's `met` quoted that line. So the change
+removed the total and kept only per-role durations. It was tested the same way as the scorer fix:
+[`eval/heldout_years/`](eval/heldout_years/) was committed first (nine candidates, three jobs with
+"N+ years of *X*" must-haves). Then the change was made, and every set was run with three orderings.
+
+| Three orderings each | With the total (shipped) | Without the total |
+|---|---|---|
+| Dev set: AWS candidates from unrelated fields flipping to met on years | 9 | 6 |
+| Dev set: mean NDCG@3 | 0.96–0.99 | 0.96–0.99 |
+| Dev set: right top job for each resume (of 13) | 12–13 | 11–13 |
+| Years set: expected verdicts matching (of 36) | 34–35 (mean 34.3) | 33–36 (mean 34.3) |
+| First held-out set: expected verdicts matching (of 44) | 41 | 39–43 (mean 40.7) |
+
+**It was reverted.** Without the total, the model adds up unrelated roles itself. For a mechanical
+engineer against the AWS data engineering job, it quoted three roles and said: *"The candidate has
+over 16 years of professional experience, which exceeds the 3+ years requirement."* The total wasn't
+the cause. When "3+ years of professional **data engineering** experience" isn't near the top of the
+list, the model drops the qualifier and counts every year. Nothing else moved outside ordering noise.
+
+The years set also showed that the problem is narrower than it looked:
+
+- **Long careers in unrelated fields** (teacher, warehouse supervisor) were never marked met, with
+  or without the total. Those jobs list 4–5 requirements; the dev-set AWS job lists 10.
+- **Career-changers are the weak spot.** Two years in a SOC after 7½ years of IT help desk was
+  marked met for "3+ years in a SOC or security operations role" in most orderings. That tied the
+  candidate with a 7-year incident responder and cost the SOC job its correct top pick.
+- **Adding up relevant roles works.** Two backend roles of about 3 years each were counted as
+  meeting "5+ years" in every ordering.
+
+The next attempt moves the arithmetic out of the model. Reports:
+[`results/heldout_years_local.md`](results/heldout_years_local.md) (shipped) and
+[`results/experiments/no_total_line/`](results/experiments/no_total_line/) (reverted change).
+
 ## Fairness testing
 
 ```bash
@@ -343,10 +379,9 @@ published results yet.
   removed and flagged. On the eval set this happened zero times, but review the flags.
 - **Scans** have no text layer to check extraction against; grounding is skipped for them, and the local
   backend can't read them (OCR first, or use `--backend claude`).
-- **Years-of-experience requirements are judged unreliably by the local model.** The blind profile
-  states total years ("Experience (total 10 yrs)"), and depending on requirement order, the model
-  sometimes counts all of them toward "N+ years of *X*", even when none are in *X*. Check the
-  evidence for those requirements.
+- **Years-of-experience requirements are judged unreliably by the local model.** Depending on
+  requirement order, it sometimes counts every year of a career toward "N+ years of *X*", even when
+  none are in *X*. Career-changers are most affected. Check the evidence for those requirements.
 - **Small eval set.** 18 synthetic candidates and six jobs (plus a seven-resume, three-job
   held-out set) is enough to catch regressions, not to certify accuracy. Add graded data from your own (consented, anonymized) hiring before relying on it.
 
