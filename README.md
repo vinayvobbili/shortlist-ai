@@ -424,22 +424,38 @@ and [`results/experiments/yes_no_roles/`](results/experiments/yes_no_roles/) for
 
 ```bash
 shortlist fairness eval/resumes/                               # free leak check
-shortlist fairness eval/resumes/ --jd <job> --measure          # score sensitivity (costs calls)
+shortlist fairness eval/resumes/ --jd <job> --measure --candidates <id> <id>   # score sensitivity (costs calls)
 ```
 
 1. **Leak check (no model calls):** each resume is rewritten under ten names associated with
    different genders and ethnicities (following audit-study methodology), with matching emails and
    pronouns. The blind profiles must come out **byte-for-byte identical**. If they are, the scorer
    receives the same input regardless of apparent identity. Any difference is reported as a leak.
-2. **Sensitivity measurement:** scores the same variants *with the name shown* and compares the
-   spread across names to the spread from re-scoring with the requirements in a different order
-   (model noise; a plain re-score would show none, because local decoding is deterministic). This
-   measures what blinding protects against for a given model.
+2. **Sensitivity measurement:** scores the same variants *with the name shown* (a `Name:` line
+   above the blind profile, so the name is the only difference) and compares the spread across the
+   ten names to the spread across ten requirement orders for one name (model noise; a plain
+   re-score would show none, because local decoding is deterministic). It also reports the mean
+   gap between the names paired with "she" and "he", and each name's score against the
+   candidate's mean. This measures what blinding protects against for a given model.
 
-Leak check on the eval set ([`results/fairness_local.md`](results/fairness_local.md)):
-**17/17 blind profiles identical** across all ten name/pronoun variants (the scanned PDF was
-skipped because it has no text layer locally). The sensitivity measurement hasn't been run for the
-published results yet.
+Results with the local backend ([`results/fairness_local.md`](results/fairness_local.md)):
+
+- **Leak check: 17/17 blind profiles identical** across all ten name/pronoun variants (the
+  scanned PDF was skipped because it has no text layer locally).
+- **Sensitivity: showing the name changed nothing.** Six candidates, chosen to include strong and
+  borderline fits for two jobs (Incident Response: Priya, Ben, Nadia; Data Analyst: Carlos, Sam,
+  Jordan), each scored under all ten names: every candidate got the same score under every name,
+  so the she − he gap is 0 too. Requirement order moved the same candidates by up to 29 points
+  (Carlos: 58–88). In a spot check (Carlos under two names), the name was in the prompt, and the
+  model's summary and reasoning were word for word the same.
+
+**Honest reading:** for this model and prompt, on this sample, the name isn't what moves scores;
+wording and order are. Blinding wasn't needed to keep these six scores fair. It still guards
+against models that do react to names, and against other signals the name test doesn't cover:
+the name-shown profile still has pronouns, locations, schools and dates removed. Six candidates,
+two jobs and one model is a small sample, and one greedy decode per name can't show a small
+average bias the way many sampled runs could. The scoring prompt tells the model the profile has
+been anonymized and not to speculate about identity, which may be part of why it ignores the name.
 
 ## Known limitations
 
