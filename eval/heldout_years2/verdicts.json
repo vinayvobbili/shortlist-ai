@@ -1,0 +1,97 @@
+{
+  "devops_engineer": {
+    "z01_sipho_dlamini": {
+      "years_devops": "met"
+    },
+    "z02_ana_lucia_ferreira": {
+      "years_devops": "partial",
+      "terraform": "met",
+      "docker": "met"
+    },
+    "z03_jonah_whitaker": {
+      "years_devops": "met"
+    },
+    "z04_camille_dubois": {
+      "years_devops": "not_met"
+    },
+    "z05_priyanka_iyer": {
+      "years_devops": "not_met"
+    },
+    "z06_grace_mwangi": {
+      "years_devops": "not_met"
+    },
+    "z07_daniel_osei": {
+      "years_devops": "not_met"
+    },
+    "z08_rosa_delgado": {
+      "years_devops": "not_met"
+    },
+    "z09_ethan_brooks": {
+      "years_devops": "not_met"
+    }
+  },
+  "ux_designer": {
+    "z01_sipho_dlamini": {
+      "years_ux": "not_met"
+    },
+    "z02_ana_lucia_ferreira": {
+      "years_ux": "not_met"
+    },
+    "z03_jonah_whitaker": {
+      "years_ux": "not_met"
+    },
+    "z04_camille_dubois": {
+      "years_ux": "partial",
+      "figma": "met",
+      "usability_testing": "met"
+    },
+    "z05_priyanka_iyer": {
+      "years_ux": "met"
+    },
+    "z06_grace_mwangi": {
+      "years_ux": "not_met"
+    },
+    "z07_daniel_osei": {
+      "years_ux": "not_met"
+    },
+    "z08_rosa_delgado": {
+      "years_ux": "not_met"
+    },
+    "z09_ethan_brooks": {
+      "years_ux": "not_met",
+      "figma": "met"
+    }
+  },
+  "clinical_research_coordinator": {
+    "z01_sipho_dlamini": {
+      "years_crc": "not_met"
+    },
+    "z02_ana_lucia_ferreira": {
+      "years_crc": "not_met"
+    },
+    "z03_jonah_whitaker": {
+      "years_crc": "not_met"
+    },
+    "z04_camille_dubois": {
+      "years_crc": "not_met"
+    },
+    "z05_priyanka_iyer": {
+      "years_crc": "not_met"
+    },
+    "z06_grace_mwangi": {
+      "years_crc": "partial",
+      "consent": "met",
+      "edc": "met",
+      "irb": "not_met"
+    },
+    "z07_daniel_osei": {
+      "years_crc": "met"
+    },
+    "z08_rosa_delgado": {
+      "years_crc": "not_met"
+    },
+    "z09_ethan_brooks": {
+      "years_crc": "not_met"
+    }
+  }
+}

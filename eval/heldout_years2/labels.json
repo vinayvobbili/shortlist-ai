@@ -1,0 +1,16 @@
+{
+  "devops_engineer": {
+    "z01_sipho_dlamini": 3,
+    "z03_jonah_whitaker": 3,
+    "z02_ana_lucia_ferreira": 2
+  },
+  "ux_designer": {
+    "z05_priyanka_iyer": 3,
+    "z04_camille_dubois": 2,
+    "z09_ethan_brooks": 1
+  },
+  "clinical_research_coordinator": {
+    "z07_daniel_osei": 3,
+    "z06_grace_mwangi": 2
+  }
+}

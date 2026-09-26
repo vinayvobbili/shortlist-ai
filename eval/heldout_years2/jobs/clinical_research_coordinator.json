@@ -1,0 +1,55 @@
+{
+  "title": "Clinical Research Coordinator",
+  "requirements": [
+    {
+      "id": "consent",
+      "description": "Obtaining informed consent from study participants",
+      "kind": "must_have"
+    },
+    {
+      "id": "irb",
+      "description": "Preparing IRB submissions",
+      "kind": "must_have"
+    },
+    {
+      "id": "edc",
+      "description": "Data entry in an EDC system (Medidata Rave or REDCap)",
+      "kind": "must_have"
+    },
+    {
+      "id": "gcp_training",
+      "description": "ICH Good Clinical Practice (GCP) training",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_crc",
+      "description": "2+ years coordinating clinical trials",
+      "kind": "must_have"
+    },
+    {
+      "id": "scheduling",
+      "description": "Scheduling study visits",
+      "kind": "must_have"
+    },
+    {
+      "id": "specimens",
+      "description": "Specimen processing and shipping",
+      "kind": "must_have"
+    },
+    {
+      "id": "adverse_events",
+      "description": "Reporting adverse events",
+      "kind": "must_have"
+    },
+    {
+      "id": "phlebotomy",
+      "description": "Phlebotomy",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "ccrp",
+      "description": "CCRP or ACRP certification",
+      "kind": "nice_to_have"
+    }
+  ]
+}

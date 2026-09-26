@@ -1,0 +1,55 @@
+{
+  "title": "UX Designer",
+  "requirements": [
+    {
+      "id": "user_research",
+      "description": "Planning and running user research",
+      "kind": "must_have"
+    },
+    {
+      "id": "figma",
+      "description": "Figma",
+      "kind": "must_have"
+    },
+    {
+      "id": "prototyping",
+      "description": "Interactive prototyping",
+      "kind": "must_have"
+    },
+    {
+      "id": "design_systems",
+      "description": "Contributing to a design system",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_ux",
+      "description": "3+ years of professional UX or product design",
+      "kind": "must_have"
+    },
+    {
+      "id": "accessibility",
+      "description": "Designing for accessibility (WCAG)",
+      "kind": "must_have"
+    },
+    {
+      "id": "usability_testing",
+      "description": "Usability testing",
+      "kind": "must_have"
+    },
+    {
+      "id": "html_css",
+      "description": "HTML and CSS",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "analytics",
+      "description": "Product analytics (Amplitude or Mixpanel)",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "presenting",
+      "description": "Presenting design work to stakeholders",
+      "kind": "nice_to_have"
+    }
+  ]
+}

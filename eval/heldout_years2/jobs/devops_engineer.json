@@ -1,0 +1,55 @@
+{
+  "title": "DevOps Engineer",
+  "requirements": [
+    {
+      "id": "ci_cd",
+      "description": "Building CI/CD pipelines (GitHub Actions or Jenkins)",
+      "kind": "must_have"
+    },
+    {
+      "id": "linux",
+      "description": "Linux administration",
+      "kind": "must_have"
+    },
+    {
+      "id": "docker",
+      "description": "Docker",
+      "kind": "must_have"
+    },
+    {
+      "id": "aws",
+      "description": "Hands-on AWS experience",
+      "kind": "must_have"
+    },
+    {
+      "id": "years_devops",
+      "description": "4+ years in DevOps, site reliability or infrastructure engineering",
+      "kind": "must_have"
+    },
+    {
+      "id": "terraform",
+      "description": "Terraform",
+      "kind": "must_have"
+    },
+    {
+      "id": "monitoring",
+      "description": "Monitoring with Datadog or Prometheus",
+      "kind": "must_have"
+    },
+    {
+      "id": "scripting",
+      "description": "Bash or Python scripting",
+      "kind": "must_have"
+    },
+    {
+      "id": "kubernetes",
+      "description": "Kubernetes",
+      "kind": "nice_to_have"
+    },
+    {
+      "id": "on_call",
+      "description": "On-call rotation experience",
+      "kind": "nice_to_have"
+    }
+  ]
+}
