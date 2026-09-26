@@ -1,6 +1,7 @@
 from datetime import date
 
-from shortlist_ai.blind import blind_profile, format_duration, months_between
+from shortlist_ai.blind import blind_profile, format_duration, months_between, total_experience_months
+from shortlist_ai.schema import Experience
 
 TODAY = date(2026, 9, 1)
 
@@ -31,10 +32,11 @@ def test_durations_replace_dates(resume):
     assert "(3 yrs 8 mos, past role)" in profile      # 2018-06 .. 2022-02
 
 
-def test_no_total_across_roles(resume):
-    # A total invites counting unrelated years toward "N+ years of X"; only per-role durations are shown.
-    profile = blind_profile(resume, TODAY)
-    assert "Experience:\n" in profile and "total" not in profile
+def test_overlapping_roles_not_double_counted(resume):
+    resume.experience.append(Experience(company="Community College", title="Adjunct", location=None,
+                                        start_date="2020-01", end_date="2021-01", is_current=False, highlights=[]))
+    # 2018-06..2022-02 and 2022-03..2026-09 -> 44 + 54 months; the adjunct role overlaps entirely
+    assert total_experience_months(resume, TODAY) == 98
 
 
 def test_duration_helpers():
