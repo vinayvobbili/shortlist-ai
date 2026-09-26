@@ -54,6 +54,12 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
   (API structured outputs, or constrained decoding locally via [Outlines](https://github.com/dottxt-ai/outlines)).
 - **Scoring:** `score = 100 × Σ(weight × credit) / Σ(weight)`, with must-have = 3, nice-to-have = 1,
   met = 1, partial = 0.5, not met = 0.
+- **Years of experience are added up in code.** For a requirement that states a year count
+  ("3+ years of data engineering"), a separate call shows the model each role's title and work,
+  without durations, and asks whether the role's main work is in that field. Code adds up the
+  durations of those roles, counting overlaps once: at least N years is met, fewer is partial,
+  none is not met. The evidence is the role lines themselves. See
+  [Years of experience, computed in code](#years-of-experience-computed-in-code).
 - **Blind profile:** removes name, email, phone, links, home and job locations, school names and
   graduation years; replaces dates with durations; neutralizes pronouns and honorifics. Job titles,
   companies, accomplishments, skills, certifications and degrees stay.
@@ -102,17 +108,17 @@ Scored by `local:mlx-community/Qwen3.5-9B-MLX-4bit` · 6 assessed · 11 below pr
 | 1 | c06_rahul_menon | 100 | 6/6 |  |
 | 2 | c16_amara_nwosu | 100 | 6/6 |  |
 | 3 | c13_oliver_grant | 68 | 4/6 | ⚠️ 1 |
-| 4 | c14_hannah_lee | 59 | 4/6 | ⚠️ 1 |
-| 5 | c03_wei_zhang | 32 | 2/6 | ⚠️ 1 |
+| 4 | c14_hannah_lee | 66 | 4/6 | ⚠️ 1 |
+| 5 | c03_wei_zhang | 18 | 1/6 | ⚠️ 1 |
 | 6 | c08_jordan_blake | 14 | 1/6 | ⚠️ 1 |
 
 #### 1. c06_rahul_menon — 100/100
 
-_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, possessing strong hands-on expertise in GCP services including BigQuery, Dataflow, and Airflow, along with required skills in Python and SQL. They also meet all 'nice to have' criteria, including Spark experience, streaming systems (Pub/Sub), data quality tooling (Great Expectations), and the specific GCP certification._
+_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, holding the required GCP certification and demonstrating strong hands-on proficiency in Python, SQL, BigQuery, Dataflow, Airflow, Spark, and streaming systems. They also have practical experience with data quality tooling using Great Expectations._
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `years_experience` | ✅ met | “Experience (total 8 yrs 1 mo)”<br>“Senior Data Engineer at Litware Technologies (4 yrs 10 mos, current role)”<br>“Data Engineer at Proseware Pvt. Ltd. (3 yrs 3 mos, past role)” |
+| `years_experience` | ✅ met | “Senior Data Engineer at Litware Technologies (4 yrs 10 mos, current role)”<br>“Data Engineer at Proseware Pvt. Ltd. (3 yrs 3 mos, past role)” |
 | `python` | ✅ met | “Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
 | `sql` | ✅ met | “Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
 | `bigquery` | ✅ met | “Migrated 120 Airflow DAGs from on-prem Hadoop to BigQuery”<br>“Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
@@ -171,7 +177,7 @@ _The candidate strongly meets all 'must-have' requirements with 7+ years of inci
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `security_ops_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Led IR for 3 ransomware incidents” |
+| `security_ops_experience` | ✅ met | “Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)”<br>“Security Analyst II at Contoso Bank (3 yrs 8 mos, past role)” |
 | `incident_investigation_leadership` | ✅ met | “Led IR for 3 ransomware incidents; wrote postmortems for exec staff” |
 | `siem_experience` | ✅ met | “Tuned Splunk correlation searches”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
 | `python_scripting` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%”<br>“Skills: Python” |
@@ -219,14 +225,17 @@ Results with the local backend (Qwen3.5-9B, 4-bit, MLX, on an M4 Mac mini), from
 | Jobs for each resume (13 resumes that fit at least one job) | |
 |---|---|
 | Best-fitting job ranked first | 13/13 |
-| Mean NDCG@3 | 1.00 |
+| Mean NDCG@3 | 0.98 ² |
 
-¹ At the ceiling: only one (frontend) or two (cloud security) candidates are graded 2 or higher.
+¹ At the ceiling: only one (frontend) or two (cloud security) candidates are graded 2 or higher.<br>
+² Wei, a backend engineer graded 1 for four jobs and 0 for two, gets Incident Response (graded 0,
+score 22) third, above the GCP data engineering job (18). Wei's backend years no longer count as
+data engineering, which is right; all of Wei's matches are weak.
 
 The tables are for the requirements in the order written. Across three orderings (two of them
-shuffled), results moved a little: mean NDCG@3 0.96–0.99, top-1 correct 5–6 of 6 jobs and 12–13
-of 13 resumes, and 800 of 850 verdicts (94%) identical in every ordering. See the held-out section
-for why orderings are the right measure of noise here.
+shuffled), results moved a little: mean NDCG@3 0.96–0.99, top-1 correct 5–6 of 6 jobs and 13 of
+13 resumes in every ordering, and 818 of 850 verdicts (96%) identical in every ordering. See the
+held-out section for why orderings are the right measure of noise here.
 
 **Read this as "no regressions", not a benchmark.** The set is small and synthetic, and the same
 people wrote it and the tool. What it does show:
@@ -243,12 +252,13 @@ people wrote it and the tool. What it does show:
   because that candidate is graded 0 for every job. Use `--backend claude` or OCR scans first.
 - The BM25 prefilter is rough. In the example above, a cut to 6 kept a grade-0 candidate and dropped
   a grade-1 one. The eval scores every candidate, so this doesn't affect the metrics above.
-- **"N+ years of X" requirements are the least stable.** For "3+ years of professional data
-  engineering experience", the model rejects a nurse's 10 years when that requirement comes
-  first. When it comes later in the list, it often marks the requirement met: *"The profile
+- **"N+ years of X" requirements were the least stable when the model judged them.** For "3+
+  years of professional data engineering experience", it rejected a nurse's 10 years when that
+  requirement came first. Later in the list, it often marked the requirement met: *"The profile
   explicitly states 10 years of professional experience, which exceeds the 3+ years
   requirement."* In the shuffled orderings, 9 of the 17 candidates for the AWS job flipped to met
-  this way, raising the scores of weak candidates. See "A fix that didn't work" below.
+  this way, raising the scores of weak candidates. Years are now added up in code, and none of
+  those verdicts change with ordering. See the two sections after the held-out one.
 - The Claude backend has unit tests for its request shape but hasn't been evaluated yet.
   Results welcome: `shortlist eval --out results/eval_claude.md`.
 
@@ -310,7 +320,9 @@ few to call a one-verdict gain.
 
 The held-out set has now been looked at, so the next change needs fresh cases. Before/after reports:
 [`results/heldout_local_before.md`](results/heldout_local_before.md),
-[`results/heldout_local.md`](results/heldout_local.md).
+[`results/heldout_local.md`](results/heldout_local.md). The second one has since been rerun with
+years computed in code, which raised Daniel's SRE score from 37 to 47 (see below). Verdict
+agreement stayed at 41 of 44 in every ordering, and rankings stayed correct.
 
 ### A fix that didn't work: hiding the total years
 
@@ -344,9 +356,69 @@ The years set also showed that the problem is narrower than it looked:
 - **Adding up relevant roles works.** Two backend roles of about 3 years each were counted as
   meeting "5+ years" in every ordering.
 
-The next attempt moves the arithmetic out of the model. Reports:
-[`results/heldout_years_local.md`](results/heldout_years_local.md) (shipped) and
+Reports: [`results/heldout_years_local_before.md`](results/heldout_years_local_before.md) (with
+the total, as shipped at the time) and
 [`results/experiments/no_total_line/`](results/experiments/no_total_line/) (reverted change).
+
+### Years of experience, computed in code
+
+The next attempt took the arithmetic away from the model. For each "N+ years of *X*" requirement, a
+separate call lists the candidate's roles (title, company and highlights, but no durations) and
+asks for two things: the field the requirement names, and whether each role is in it. Code adds up
+the durations of the roles that count. The main scoring call is unchanged; its verdict on the
+years requirement is replaced.
+
+The first version asked yes/no per role. It was tested on
+[`eval/heldout_years2/`](eval/heldout_years2/), committed first: 35 of 35 in every ordering. But
+the original scorer also got 35 of 35 there, so that set couldn't tell the two apart. Reading the
+per-role answers on the first held-out set showed a new problem: roles that only *touch* a field were counted. A
+platform engineer counted as security engineering because the work "involves hardening", and an ML
+engineer counted as infrastructure because the models ran on Kubernetes. So a third set,
+[`eval/heldout_years3/`](eval/heldout_years3/), was written around that case and committed before
+the fix. Each job has candidates whose main work is in the field and candidates whose work touches
+it. The fix asks for three answers per role, **main / touches / no**, and counts only main.
+
+| Years set 3: 29 expected years verdicts, three orderings | Matching | Too lenient |
+|---|---|---|
+| Scoring model judges years (original) | 26–28 (mean 27) | 1–3 |
+| Code adds up years; roles judged yes/no | 26 every ordering | 3 |
+| Code adds up years; roles judged main / touches / no (shipped) | **29 every ordering** | 0 |
+
+The other sets, checked for regressions (three orderings each):
+
+| | Scoring model judges years | Computed in code |
+|---|---|---|
+| Dev set: years verdicts that change with ordering | 11 | 0 |
+| Dev set: verdicts identical in every ordering (of 850) | 800 (94%) | 818 (96%) |
+| Dev set: right top job for each resume (of 13) | 12–13 | 13 every ordering |
+| Dev set: mean NDCG@3, candidates | 0.96–0.99 | 0.96–0.99 |
+| First held-out set: expected verdicts matching (of 44) | 41 every ordering | 41 every ordering |
+| Years set 1: expected verdicts matching (of 36) | 34–35 (mean 34.3) | 35–36 (mean 35.7) |
+| Years set 1: SOC job's top pick | wrong every ordering | right every ordering |
+| Years set 2: expected verdicts matching (of 35) | 35 every ordering | 35 every ordering |
+
+**Honest reading: it works on the case it was built for, and nothing got worse.**
+
+- Only set 3 is a clean test of the shipped version, and it's small: 29 verdicts from ten
+  synthetic candidates, written by the same person who wrote the fix, around the failure the fix
+  targets. It shows the fix does what it was meant to on new cases, not that it generalizes.
+- The dev set and years set 1 had been seen, so their gains agree with set 3 but aren't
+  independent evidence. Set 2 is a null result.
+- **It's stricter by design.** A role that touches the field gets no credit, however long. Nadia,
+  a cloud security engineer, gets none of Nadia's years counted toward "security operations or
+  incident response"; the Incident Response score went from 53 to 44 (still ranked third, as
+  graded). The reasoning names the roles that touch the field, so a reviewer can see what was left
+  out.
+- **Some calls are judgment.** A systems administrator's years count as infrastructure
+  engineering, which raised Daniel's SRE score on the first held-out set from 37 to 47. That set
+  leaves the verdict out on purpose as ambiguous.
+- It costs one extra model call per years requirement per candidate, and any requirement that
+  states a number of years goes this way, even if the number isn't the point of it.
+
+Reports: [`results/heldout_years3_local.md`](results/heldout_years3_local.md) and
+[`_before`](results/heldout_years3_local_before.md), the same pair for
+[years set 2](results/heldout_years2_local.md) and [years set 1](results/heldout_years_local.md),
+and [`results/experiments/yes_no_roles/`](results/experiments/yes_no_roles/) for the yes/no version.
 
 ## Fairness testing
 
@@ -379,11 +451,12 @@ published results yet.
   removed and flagged. On the eval set this happened zero times, but review the flags.
 - **Scans** have no text layer to check extraction against; grounding is skipped for them, and the local
   backend can't read them (OCR first, or use `--backend claude`).
-- **Years-of-experience requirements are judged unreliably by the local model.** Depending on
-  requirement order, it sometimes counts every year of a career toward "N+ years of *X*", even when
-  none are in *X*. Career-changers are most affected. Check the evidence for those requirements.
-- **Small eval set.** 18 synthetic candidates and six jobs (plus a seven-resume, three-job
-  held-out set) is enough to catch regressions, not to certify accuracy. Add graded data from your own (consented, anonymized) hiring before relying on it.
+- **Years of experience depend on one judgment per role.** The model decides whether each role's
+  main work is in the field; roles that only touch it get no credit, and titles like "systems
+  administrator" vs. "infrastructure engineer" are a judgment call. Durations come from the dates
+  as extracted, so a wrong date gives a wrong total. Check the evidence for those requirements.
+- **Small eval set.** 18 synthetic candidates and six jobs (plus four held-out sets of seven to ten
+  resumes and three jobs each) is enough to catch regressions, not to certify accuracy. Add graded data from your own (consented, anonymized) hiring before relying on it.
 
 ## Responsible use
 

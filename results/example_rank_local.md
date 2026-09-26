@@ -26,17 +26,17 @@ Scored by `local:mlx-community/Qwen3.5-9B-MLX-4bit` · 6 assessed · 11 below pr
 | 1 | c06_rahul_menon | 100 | 6/6 |  |
 | 2 | c16_amara_nwosu | 100 | 6/6 |  |
 | 3 | c13_oliver_grant | 68 | 4/6 | ⚠️ 1 |
-| 4 | c14_hannah_lee | 59 | 4/6 | ⚠️ 1 |
-| 5 | c03_wei_zhang | 32 | 2/6 | ⚠️ 1 |
+| 4 | c14_hannah_lee | 66 | 4/6 | ⚠️ 1 |
+| 5 | c03_wei_zhang | 18 | 1/6 | ⚠️ 1 |
 | 6 | c08_jordan_blake | 14 | 1/6 | ⚠️ 1 |
 
 ## 1. c06_rahul_menon — 100/100
 
-_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, possessing strong hands-on expertise in GCP services including BigQuery, Dataflow, and Airflow, along with required skills in Python and SQL. They also meet all 'nice to have' criteria, including Spark experience, streaming systems (Pub/Sub), data quality tooling (Great Expectations), and the specific GCP certification._
+_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, holding the required GCP certification and demonstrating strong hands-on proficiency in Python, SQL, BigQuery, Dataflow, Airflow, Spark, and streaming systems. They also have practical experience with data quality tooling using Great Expectations._
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `years_experience` | ✅ met | “Experience (total 8 yrs 1 mo)”<br>“Senior Data Engineer at Litware Technologies (4 yrs 10 mos, current role)”<br>“Data Engineer at Proseware Pvt. Ltd. (3 yrs 3 mos, past role)” |
+| `years_experience` | ✅ met | “Senior Data Engineer at Litware Technologies (4 yrs 10 mos, current role)”<br>“Data Engineer at Proseware Pvt. Ltd. (3 yrs 3 mos, past role)” |
 | `python` | ✅ met | “Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
 | `sql` | ✅ met | “Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
 | `bigquery` | ✅ met | “Migrated 120 Airflow DAGs from on-prem Hadoop to BigQuery”<br>“Skills: GCP, BigQuery, Dataflow, Pub/Sub, Airflow, Spark, Scala, Python, SQL” |
@@ -49,12 +49,12 @@ _The candidate is a highly qualified Senior Data Engineer with 8+ years of exper
 
 ## 2. c16_amara_nwosu — 100/100
 
-_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, strong proficiency in Python, SQL, and GCP services including BigQuery, Dataflow, and Airflow. They possess all 'must-have' skills and several 'nice-to-have' certifications and tools like Spark, streaming systems, and data quality tooling._
+_The candidate is a highly qualified Senior Data Engineer with 8+ years of experience, strong proficiency in Python, SQL, and GCP services including BigQuery, Dataflow, and Airflow. They possess all 'must-have' requirements and several 'nice-to-have' skills like Spark, streaming systems, and the relevant GCP certification._
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `years_experience` | ✅ met | “Senior data engineer, 8 years across batch and streaming on Google Cloud.”<br>“Experience (total 9 yrs 6 mos):” |
-| `python` | ✅ met | “Designed streaming pipelines with Pub/Sub and Dataflow (Apache Beam, Python)”<br>“Skills: Python, SQL, BigQuery, Dataflow, Apache Beam, Pub/Sub, Airflow, Spark, Dataproc, Terraform” |
+| `years_experience` | ✅ met | “Staff Data Engineer at Woodgrove Bank (6 yrs 3 mos, current role)”<br>“Data Engineer at Coho Logistics (3 yrs 3 mos, past role)” |
+| `python` | ✅ met | “Designed streaming pipelines with Pub/Sub and Dataflow (Apache Beam, Python) processing 1B events/day”<br>“Skills: Python, SQL, BigQuery, Dataflow, Apache Beam, Pub/Sub, Airflow, Spark, Dataproc, Terraform” |
 | `sql` | ✅ met | “Built Spark jobs on Dataproc and SQL models in BigQuery”<br>“Skills: Python, SQL, BigQuery, Dataflow, Apache Beam, Pub/Sub, Airflow, Spark, Dataproc, Terraform” |
 | `bigquery` | ✅ met | “Run 150+ Airflow DAGs on Cloud Composer feeding BigQuery”<br>“Built Spark jobs on Dataproc and SQL models in BigQuery”<br>“Skills: Python, SQL, BigQuery, Dataflow, Apache Beam, Pub/Sub, Airflow, Spark, Dataproc, Terraform” |
 | `dataflow_or_beam` | ✅ met | “Designed streaming pipelines with Pub/Sub and Dataflow (Apache Beam, Python) processing 1B events/day”<br>“Skills: Python, SQL, BigQuery, Dataflow, Apache Beam, Pub/Sub, Airflow, Spark, Dataproc, Terraform” |

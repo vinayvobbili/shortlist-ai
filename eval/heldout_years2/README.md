@@ -38,3 +38,11 @@ engineer then SRE, about 2½ + 2 years against "4+"), expected `met`.
 - Some years in the field but fewer than asked: `partial`. None: `not_met`.
 - The career-changers' relevant roles are current, so their durations grow. The labels assume the
   eval runs before October 2027, when the shortest of them (the research coordinator's) reaches 2 years.
+
+## Results so far
+
+Used once, for computing years in code with a yes/no judgment per role (commit `c441300`), and
+again for the main / touches / no version (`edb076f`). All three versions, including the original
+scorer, matched 35 of 35 in every ordering, so this set didn't separate them: the original scorer
+didn't make the mistake here. See the main README's "Years of experience, computed in code".
+**This set has now been seen.**

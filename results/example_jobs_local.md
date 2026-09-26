@@ -21,7 +21,7 @@ _The candidate strongly meets all 'must-have' requirements with 7+ years of inci
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `security_ops_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Led IR for 3 ransomware incidents” |
+| `security_ops_experience` | ✅ met | “Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)”<br>“Security Analyst II at Contoso Bank (3 yrs 8 mos, past role)” |
 | `incident_investigation_leadership` | ✅ met | “Led IR for 3 ransomware incidents; wrote postmortems for exec staff” |
 | `siem_experience` | ✅ met | “Tuned Splunk correlation searches”<br>“Skills: Python, Go, KQL, SPL, Terraform, k8s, CrowdStrike, Sentinel” |
 | `python_scripting` | ✅ met | “Built SOAR playbooks in Python that cut phishing triage time by 60%”<br>“Skills: Python” |
@@ -36,7 +36,7 @@ _The candidate strongly meets the core requirements with 7+ years of security en
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| `security_engineering_experience` | ✅ met | “Security engineer with 7 yrs in incident response and detection engineering”<br>“Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)” |
+| `security_engineering_experience` | ✅ met | “Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)” |
 | `aws_security_experience` | 🟡 partial | “AWS Security Specialty”<br>“AWS Certified Security – Specialty”<br>⚠️ not found in profile |
 | `infrastructure_as_code` | ✅ met | “Terraform” |
 | `python` | ✅ met | “Python”<br>“Built SOAR playbooks in Python that cut phishing triage time by 60%” |

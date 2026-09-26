@@ -42,5 +42,6 @@ candidates cover three cases:
 
 Used once, to test removing the "Experience (total N yrs)" line from the blind profile (commit
 `2ba1452`, reverted). Expected verdicts matched 34.3 of 36 on average both with and without the
-line. See the main README's "A fix that didn't work". **This set has now been seen**, so the next
-change needs fresh cases.
+line. See the main README's "A fix that didn't work". Later rerun as a regression check for
+computing years in code: 35.7 of 36 on average (was 34.3), and the SOC job's top pick is right in
+every ordering. **This set has now been seen**, so the next change needs fresh cases.

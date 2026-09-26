@@ -1,5 +1,7 @@
 # Ranking eval: `local:mlx-community/Qwen3.5-9B-MLX-4bit`
 
+Superseded: years computed in code, but roles judged yes/no ("does this role count?") rather than main / touches / no (commit `c441300`, before `edb076f`). The shipped version is in `results/`; see the main README.
+
 ## Candidates for each job (`shortlist rank`)
 
 | Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |

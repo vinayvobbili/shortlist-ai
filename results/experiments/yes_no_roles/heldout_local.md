@@ -1,13 +1,15 @@
 # Ranking eval: `local:mlx-community/Qwen3.5-9B-MLX-4bit`
 
+Superseded: years computed in code, but roles judged yes/no ("does this role count?") rather than main / touches / no (commit `c441300`, before `edb076f`). The shipped version is in `results/`; see the main README.
+
 ## Candidates for each job (`shortlist rank`)
 
 | Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |
 |---|---|---|---|---|
-| sre_kubernetes | 1.00 | 1.00 | 0.67 | yes |
+| sre_kubernetes | 0.96 | 0.99 | 0.67 | yes |
 | ml_engineer | 1.00 | 1.00 | 0.33 | yes |
 | azure_security_engineer | 1.00 | 1.00 | 0.33 | yes |
-| **mean** | **1.00** | **1.00** | **0.44** | **100%** |
+| **mean** | **0.99** | **1.00** | **0.44** | **100%** |
 
 ## Jobs for each resume (`shortlist jobs`)
 
@@ -40,7 +42,7 @@ Run 1 lists the requirements as written; the others shuffle them (seeds 1–2). 
 
 | | min | mean | max |
 |---|---|---|---|
-| Candidate ranking: mean NDCG@3 | 1.00 | 1.00 | 1.00 |
+| Candidate ranking: mean NDCG@3 | 0.99 | 1.00 | 1.00 |
 | Candidate ranking: top-1 correct (of 3) | 3.0 | 3.0 | 3.0 |
 | Job ranking: top-1 correct (of 7) | 7.0 | 7.0 | 7.0 |
 | Expected verdicts agreeing (of 44) | 41.0 | 41.0 | 41.0 |
@@ -73,8 +75,8 @@ Verdicts that changed with the ordering:
 |---|---|---|---|
 | 1 | h01_keiko_tanaka | 100 | 3 |
 | 2 | h07_lucas_fernandez | 80 | 3 |
-| 3 | h02_daniel_okoye | 47 | 1 |
-| 4 | h03_sofia_marino | 30 | 0 |
+| 3 | h03_sofia_marino | 50 | 0 |
+| 4 | h02_daniel_okoye | 47 | 1 |
 | 5 | h04_chloe_bennett | 20 | 0 |
 | 6 | h05_hana_kowalski | 20 | 0 |
 | 7 | h06_ryan_brooks | 0 | 0 |
@@ -97,8 +99,8 @@ Verdicts that changed with the ordering:
 |---|---|---|---|
 | 1 | h05_hana_kowalski | 97 | 3 |
 | 2 | h06_ryan_brooks | 57 | 1 |
-| 3 | h01_keiko_tanaka | 27 | 0 |
-| 4 | h02_daniel_okoye | 27 | 0 |
-| 5 | h07_lucas_fernandez | 27 | 0 |
+| 3 | h07_lucas_fernandez | 47 | 0 |
+| 4 | h01_keiko_tanaka | 27 | 0 |
+| 5 | h02_daniel_okoye | 27 | 0 |
 | 6 | h03_sofia_marino | 20 | 0 |
 | 7 | h04_chloe_bennett | 20 | 0 |

@@ -40,3 +40,10 @@ Platform") must still count when the work is squarely in it, and one role can co
   doesn't count, however long.
 - Some such years but fewer than asked: `partial`. None: `not_met`.
 - Current roles grow; the labels assume the eval runs before October 2027.
+
+## Results so far
+
+Used once, for the main / touches / no judgment per role (commit `edb076f`), with three orderings.
+Matching expected verdicts: 29 of 29 in every ordering, against 26–28 for the original scorer and
+26 for the yes/no version. See the main README's "Years of experience, computed in code".
+**This set has now been seen.**

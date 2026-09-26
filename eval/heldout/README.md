@@ -43,5 +43,6 @@ Used once, for the certification/skills-list scoring rule (commit `4bc7cbb`). Ve
 was 41/44 both before and after: one fewer too-lenient verdict, one more too-strict. See the main
 README's "A scorer fix, checked on held-out data". A second pass ran each version with three
 requirement orderings (`--repeats 3`) to measure noise; the first ordering reproduced the original
-results exactly. **This set has now been seen**, so don't use it
+results exactly. Later rerun as a regression check for computing years in code: still 41/44 in
+every ordering. **This set has now been seen**, so don't use it
 to justify the next prompt change; add new cases instead.

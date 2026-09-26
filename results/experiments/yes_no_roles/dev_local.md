@@ -1,5 +1,7 @@
 # Ranking eval: `local:mlx-community/Qwen3.5-9B-MLX-4bit`
 
+Superseded: years computed in code, but roles judged yes/no ("does this role count?") rather than main / touches / no (commit `c441300`, before `edb076f`). The shipped version is in `results/`; see the main README.
+
 ## Candidates for each job (`shortlist rank`)
 
 | Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |
@@ -19,7 +21,7 @@ Resumes that fit at least one of the 6 jobs.
 | Resume | Top pick (grade) | Best grade available | NDCG@3 |
 |---|---|---|---|
 | c01_priya_raman | incident_response_engineer (3, score 100) | 3 | 1.00 |
-| c03_wei_zhang | data_analyst (1, score 50) | 1 | 0.77 |
+| c03_wei_zhang | data_engineer_aws (1, score 52) | 1 | 1.00 |
 | c05_sam_okafor | data_analyst (3, score 75) | 3 | 1.00 |
 | c06_rahul_menon | senior_data_engineer_gcp (3, score 100) | 3 | 1.00 |
 | c08_jordan_blake | data_analyst (1, score 33) | 1 | 1.00 |
@@ -31,7 +33,7 @@ Resumes that fit at least one of the 6 jobs.
 | c16_amara_nwosu | senior_data_engineer_gcp (3, score 100) | 3 | 1.00 |
 | c17_ben_carter | incident_response_engineer (2, score 56) | 2 | 1.00 |
 | c18_nadia_haddad | cloud_security_engineer (3, score 94) | 3 | 1.00 |
-| **mean** | **top-1 correct: 100%** | | **0.98** |
+| **mean** | **top-1 correct: 100%** | | **1.00** |
 
 ## Stability across 3 requirement orderings
 
@@ -46,7 +48,7 @@ Run 1 lists the requirements as written; the others shuffle them (seeds 1–2). 
 Wrong top pick: run 2: cloud_security_engineer.
 
 - **818 of 850 requirement verdicts (96%) were identical in every ordering.**
-- A (job, resume) score moved by 2.0 points on average across orderings, and at most 20.4 (c03_wei_zhang for data_engineer_aws).
+- A (job, resume) score moved by 2.0 points on average across orderings, and at most 20.5 (c03_wei_zhang for data_engineer_aws).
 
 Verdicts that changed with the ordering:
 
@@ -95,9 +97,9 @@ Verdicts that changed with the ordering:
 | 2 | c16_amara_nwosu | 100 | 3 |
 | 3 | c13_oliver_grant | 68 | 2 |
 | 4 | c14_hannah_lee | 66 | 2 |
-| 5 | c15_carlos_diaz | 30 | 1 |
-| 6 | c05_sam_okafor | 27 | 1 |
-| 7 | c03_wei_zhang | 18 | 1 |
+| 5 | c15_carlos_diaz | 43 | 1 |
+| 6 | c03_wei_zhang | 32 | 1 |
+| 7 | c05_sam_okafor | 27 | 1 |
 | 8 | c01_priya_raman | 14 | 0 |
 | 9 | c08_jordan_blake | 14 | 0 |
 | 10 | c17_ben_carter | 14 | 0 |
@@ -115,8 +117,8 @@ Verdicts that changed with the ordering:
 | Rank | Candidate | Score | Gold grade |
 |---|---|---|---|
 | 1 | c01_priya_raman | 100 | 3 |
-| 2 | c17_ben_carter | 56 | 2 |
-| 3 | c18_nadia_haddad | 44 | 2 |
+| 2 | c18_nadia_haddad | 62 | 2 |
+| 3 | c17_ben_carter | 56 | 2 |
 | 4 | c03_wei_zhang | 22 | 0 |
 | 5 | c13_oliver_grant | 22 | 0 |
 | 6 | c05_sam_okafor | 19 | 0 |
@@ -141,8 +143,8 @@ Verdicts that changed with the ordering:
 | 2 | c16_amara_nwosu | 73 | 2 |
 | 3 | c06_rahul_menon | 68 | 2 |
 | 4 | c14_hannah_lee | 66 | 1 |
-| 5 | c03_wei_zhang | 39 | 1 |
-| 6 | c15_carlos_diaz | 32 | 1 |
+| 5 | c03_wei_zhang | 52 | 1 |
+| 6 | c15_carlos_diaz | 46 | 1 |
 | 7 | c05_sam_okafor | 27 | 1 |
 | 8 | c01_priya_raman | 23 | 0 |
 | 9 | c18_nadia_haddad | 23 | 0 |
