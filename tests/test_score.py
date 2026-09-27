@@ -4,7 +4,8 @@ from shortlist_ai.score import finalize, quote_in_profile
 PROFILE = """CANDIDATE PROFILE
 - Senior Security Engineer at Northwind Health (4 yrs, current role)
   * Built SOAR playbooks in Python that cut triage time by 60%
-Skills: Python, Splunk"""
+Skills: Python, Splunk, JavaScript, Microsoft Sentinel
+Certifications: GCIH, OSCP"""
 
 JOB = JobSpec(title="IR Engineer", requirements=[
     Requirement(id="python", description="Python scripting", kind="must_have"),
@@ -23,6 +24,19 @@ def test_quote_matching():
     assert quote_in_profile("Skills:  python,   splunk", PROFILE)
     assert not quote_in_profile("Led a team of 12 engineers", PROFILE)
     assert not quote_in_profile("...", PROFILE)
+
+
+def test_labeled_list_with_items_left_out():
+    # The model often shortens a list line to the items it needs.
+    assert quote_in_profile("Skills: Splunk", PROFILE)
+    assert quote_in_profile("Skills: JavaScript, Splunk", PROFILE)
+    assert quote_in_profile("skills: microsoft sentinel", PROFILE)
+    assert quote_in_profile("Certifications: OSCP", PROFILE)
+    assert not quote_in_profile("Skills: Kubernetes", PROFILE)  # not in the line
+    assert not quote_in_profile("Skills: Java", PROFILE)  # whole items only, not "JavaScript"
+    assert not quote_in_profile("Skills: Sentinel, Kubernetes", PROFILE)  # every item must be there
+    assert not quote_in_profile("Certifications: Splunk", PROFILE)  # in a different line
+    assert not quote_in_profile("Tools: Splunk", PROFILE)  # no such label
 
 
 def test_score_is_weighted_in_code():
