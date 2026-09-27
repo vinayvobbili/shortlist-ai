@@ -44,5 +44,6 @@ was 41/44 both before and after: one fewer too-lenient verdict, one more too-str
 README's "A scorer fix, checked on held-out data". A second pass ran each version with three
 requirement orderings (`--repeats 3`) to measure noise; the first ordering reproduced the original
 results exactly. Later rerun as a regression check for computing years in code: still 41/44 in
-every ordering. **This set has now been seen**, so don't use it
+every ordering. Rerun again for the quote-check fix for shortened list lines: 41–42/44 (one
+too-strict Terraform verdict fixed). **This set has now been seen**, so don't use it
 to justify the next prompt change; add new cases instead.

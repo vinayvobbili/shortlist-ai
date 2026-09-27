@@ -90,6 +90,9 @@ shortlist rank --requirements reqs.json eval/resumes/ --top 5 --out shortlist.md
 
 # Or skip the review step and fully local:
 shortlist rank --backend local --jd eval/jobs/senior_data_engineer_gcp.md eval/resumes/
+
+# 3. For a borderline candidate: how much does the score depend on wording that shouldn't matter?
+shortlist stability --requirements reqs.json eval/resumes/c15_carlos_diaz.md
 ```
 
 <details>
@@ -234,7 +237,7 @@ data engineering, which is right; all of Wei's matches are weak.
 
 The tables are for the requirements in the order written. Across three orderings (two of them
 shuffled), results moved a little: mean NDCG@3 0.96–0.99, top-1 correct 5–6 of 6 jobs and 13 of
-13 resumes in every ordering, and 818 of 850 verdicts (96%) identical in every ordering. See the
+13 resumes in every ordering, and 819 of 850 verdicts (96%) identical in every ordering. See the
 held-out section for why orderings are the right measure of noise here.
 
 **Read this as "no regressions", not a benchmark.** The set is small and synthetic, and the same
@@ -321,8 +324,9 @@ few to call a one-verdict gain.
 The held-out set has now been looked at, so the next change needs fresh cases. Before/after reports:
 [`results/heldout_local_before.md`](results/heldout_local_before.md),
 [`results/heldout_local.md`](results/heldout_local.md). The second one has since been rerun with
-years computed in code, which raised Daniel's SRE score from 37 to 47 (see below). Verdict
-agreement stayed at 41 of 44 in every ordering, and rankings stayed correct.
+years computed in code, which raised Daniel's SRE score from 37 to 47 (see below), and again with
+the quote-check fix (47 to 57, "Checking one score" below). Verdict agreement is now 41–42 of 44,
+and rankings stayed correct.
 
 ### A fix that didn't work: hiding the total years
 
@@ -419,6 +423,37 @@ Reports: [`results/heldout_years3_local.md`](results/heldout_years3_local.md) an
 [`_before`](results/heldout_years3_local_before.md), the same pair for
 [years set 2](results/heldout_years2_local.md) and [years set 1](results/heldout_years_local.md),
 and [`results/experiments/yes_no_roles/`](results/experiments/yes_no_roles/) for the yes/no version.
+
+### Checking one score: `shortlist stability`
+
+`shortlist stability` scores one resume against one job with the requirements in ten orders
+and shows which verdicts move, with the evidence and reasoning behind each version. It's meant for
+a borderline candidate: a score that moves between orders is a range, not a point.
+
+Run on Carlos (analytics engineer, graded 3) for Data Analyst, it found the score moving from 58
+to 88, and the cause was mostly in the code, not the model. The model sometimes quoted the skills
+line shortened to the item it needed ("Skills: Python" from "Skills: SQL, dbt, Snowflake, Looker,
+Python, Excel"). That isn't a substring, so the quote check rejected it and downgraded a correct
+verdict; in one order, three of them. The check now also accepts a labeled list with items left
+out, when one profile line has that label and every quoted item as whole words. Made-up items still
+fail, and "Java" doesn't match "JavaScript".
+
+| Ten orders, Carlos for Data Analyst | Before | After |
+|---|---|---|
+| Score range | 58–88 | 71–88 |
+| Verdicts downgraded for an unfound quote | 4 | 0 |
+
+What's left is the model's own judgment on two borderline requirements: whether "light Python
+scripting for automation" meets "Python or R for data analysis", and whether "Excel" in a skills
+list is partial or not met for "advanced Excel". Reasonable reviewers could split on both.
+
+On the eval sets (three orderings each), the same fix changed two verdicts, both toward the
+expected answer: Terraform for Daniel on the first held-out set (not met → partial, as labeled;
+agreement 41 → 41–42 of 44) and Python scripting for Ben on the dev set (partial → met). No ranking
+moved. The shortened quote is rarer than Carlos's case suggests, but when it happens it costs a
+whole verdict. Reports:
+[`results/stability_carlos_data_analyst_before.md`](results/stability_carlos_data_analyst_before.md),
+[`results/stability_carlos_data_analyst.md`](results/stability_carlos_data_analyst.md).
 
 ## Fairness testing
 

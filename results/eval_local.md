@@ -29,7 +29,7 @@ Resumes that fit at least one of the 6 jobs.
 | c14_hannah_lee | data_analyst (3, score 88) | 3 | 0.97 |
 | c15_carlos_diaz | data_analyst (3, score 83) | 3 | 1.00 |
 | c16_amara_nwosu | senior_data_engineer_gcp (3, score 100) | 3 | 1.00 |
-| c17_ben_carter | incident_response_engineer (2, score 56) | 2 | 1.00 |
+| c17_ben_carter | incident_response_engineer (2, score 66) | 2 | 1.00 |
 | c18_nadia_haddad | cloud_security_engineer (3, score 94) | 3 | 1.00 |
 | **mean** | **top-1 correct: 100%** | | **0.98** |
 
@@ -45,8 +45,8 @@ Run 1 lists the requirements as written; the others shuffle them (seeds 1–2). 
 
 Wrong top pick: run 2: cloud_security_engineer.
 
-- **818 of 850 requirement verdicts (96%) were identical in every ordering.**
-- A (job, resume) score moved by 2.0 points on average across orderings, and at most 20.4 (c03_wei_zhang for data_engineer_aws).
+- **819 of 850 requirement verdicts (96%) were identical in every ordering.**
+- A (job, resume) score moved by 1.9 points on average across orderings, and at most 20.4 (c03_wei_zhang for data_engineer_aws).
 
 Verdicts that changed with the ordering:
 
@@ -77,7 +77,6 @@ Verdicts that changed with the ordering:
 | incident_response_engineer | c14_hannah_lee | `cloud_security_experience` | not_met → not_met → partial |
 | incident_response_engineer | c16_amara_nwosu | `cloud_security_experience` | not_met → not_met → partial |
 | incident_response_engineer | c17_ben_carter | `malware_analysis` | not_met → partial → partial |
-| incident_response_engineer | c17_ben_carter | `python_scripting` | partial → met → met |
 | incident_response_engineer | c18_nadia_haddad | `incident_investigation_leadership` | not_met → partial → not_met |
 | incident_response_engineer | c18_nadia_haddad | `security_certifications` | not_met → partial → not_met |
 | senior_data_engineer_gcp | c03_wei_zhang | `sql` | not_met → not_met → met |
@@ -115,7 +114,7 @@ Verdicts that changed with the ordering:
 | Rank | Candidate | Score | Gold grade |
 |---|---|---|---|
 | 1 | c01_priya_raman | 100 | 3 |
-| 2 | c17_ben_carter | 56 | 2 |
+| 2 | c17_ben_carter | 66 | 2 |
 | 3 | c18_nadia_haddad | 44 | 2 |
 | 4 | c03_wei_zhang | 22 | 0 |
 | 5 | c13_oliver_grant | 22 | 0 |
