@@ -7,8 +7,8 @@ import httpx2
 from shortlist_ai.backends import ClaudeBackend
 from shortlist_ai.cli import main
 from shortlist_ai.extract import Cache
-from shortlist_ai.pipeline import match_jobs, rank
-from shortlist_ai.report import to_json, to_markdown
+from shortlist_ai.pipeline import match_jobs, order_stability, rank
+from shortlist_ai.report import stability_to_markdown, to_json, to_markdown
 from shortlist_ai.schema import CandidateAssessment, JobSpec, Requirement, RequirementAssessment, Resume
 
 JOB = JobSpec(title="Data Engineer", requirements=[
@@ -210,3 +210,38 @@ def test_cli_jobs_accepts_reviewed_requirements(tmp_path, monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     assert [m["job_id"] for m in out["matches"]] == ["py", "fe"]
     assert out["matches"][1]["gaps"] == ["React"]
+
+
+class OrderSensitiveBackend(FakeBackend):
+    """Like FakeBackend, but whichever requirement is listed first gets a made-up quote."""
+    def structured(self, system, content, output_type):
+        result = super().structured(system, content, output_type)
+        if isinstance(result, CandidateAssessment):
+            first = re.search(r"^- id=(\S+)", content[0]["text"], re.M).group(1)
+            for a in result.assessments:
+                if a.requirement_id == first and a.verdict == "met":
+                    a.evidence = ["Skills: made up"]
+        return result
+
+
+def test_order_stability_shows_what_moves(tmp_path):
+    write(tmp_path, "alice", "Python, BigQuery")
+    st = order_stability(tmp_path / "alice.txt", JOB, OrderSensitiveBackend(), orders=6)
+    assert len(st.results) == 6
+    assert len({r.requirements[0].requirement_id for r in st.results}) > 1  # the model saw different orders
+    md = stability_to_markdown(st, "fake:fake-1")
+    # A made-up quote on python or bigquery (must-haves, met) downgrades it: 64, not 86.
+    assert "**Score: 64–86**" in md
+    assert "### `python`" in md and "downgraded: quote not found" in md
+    assert "### `spark`" not in md  # not_met in every order
+
+
+def test_stability_cli(tmp_path, monkeypatch, capsys):
+    write(tmp_path, "alice", "Python, Spark")
+    (tmp_path / "reqs.json").write_text(JOB.model_dump_json())
+    monkeypatch.setattr("shortlist_ai.cli.get_backend", lambda name, model=None: FakeBackend())
+    main(["stability", "--no-cache", "--requirements", str(tmp_path / "reqs.json"), "--orders", "3",
+          str(tmp_path / "alice.txt")])
+    out = capsys.readouterr().out
+    assert "# Order stability: alice.txt for Data Engineer" in out
+    assert "Every verdict was the same in every order." in out

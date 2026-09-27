@@ -2,7 +2,7 @@
 
 import json
 
-from .pipeline import JobMatches, Ranking
+from .pipeline import JobMatches, OrderStability, Ranking
 
 VERDICT_MARK = {"met": "✅ met", "partial": "🟡 partial", "not_met": "❌ not met"}
 
@@ -94,3 +94,47 @@ def jobs_to_json(matches: JobMatches) -> str:
                     for m in matches.matches],
         "errors": matches.errors,
     }, indent=2, ensure_ascii=False)
+
+
+SHORT_MARK = {"met": "✅", "partial": "🟡", "not_met": "❌"}
+
+
+def stability_to_markdown(st: OrderStability, backend_desc: str) -> str:
+    """Which verdicts behind a score hold across requirement orders, and why the others move."""
+    scores = [r.score for r in st.results]
+    out = [f"# Order stability: {st.resume_name} for {st.job.title}", "",
+           f"Scored by `{backend_desc}` with the requirements in {len(scores)} orders (order 1 as written). "
+           "Scoring ignores the order, so anything that changes is the model reacting to a detail that "
+           "shouldn't matter. Treat the score as a range.", "",
+           f"**Score: {min(scores):.0f}–{max(scores):.0f}** (median {sorted(scores)[len(scores) // 2]:.0f}). "
+           "By order: " + ", ".join(f"{s:.0f}" for s in scores) + ".", "",
+           "## Verdicts by order", "",
+           "⚠️ marks a verdict downgraded because a quote wasn't found in the profile.", "",
+           "| Requirement | Type | " + " | ".join(str(i + 1) for i in range(len(scores))) + " |",
+           "|---|---|" + "---|" * len(scores)]
+    by_id = [{r.requirement_id: r for r in res.requirements} for res in st.results]
+    varying = []
+    for req in st.job.requirements:
+        cells = [by_id[i][req.id] for i in range(len(scores))]
+        marks = [SHORT_MARK[c.verdict] + ("" if c.evidence_verified else "⚠️") for c in cells]
+        out.append(f"| `{req.id}` | {req.kind.replace('_', '-')} | " + " | ".join(marks) + " |")
+        if len({(c.verdict, c.evidence_verified) for c in cells}) > 1:
+            varying.append((req, cells))
+    if not varying:
+        out += ["", "Every verdict was the same in every order."]
+        return "\n".join(out) + "\n"
+    out += ["", "## What changed", ""]
+    for req, cells in varying:
+        out += [f"### `{req.id}`: {req.description}", ""]
+        seen = {}
+        for i, c in enumerate(cells):
+            seen.setdefault((c.verdict, c.evidence_verified), []).append(i)
+        for (verdict, verified), idx in seen.items():
+            c = cells[idx[0]]
+            label = VERDICT_MARK[verdict] + ("" if verified else " ⚠️ (downgraded: quote not found)")
+            quotes = "; ".join(f"“{q}”" for q in c.evidence) or "no quotes"
+            orders = ", ".join(str(i + 1) for i in idx)
+            out.append(f"- **{label}** in order{'s' if len(idx) > 1 else ''} {orders}. "
+                       f"Evidence: {quotes}. Reasoning: {c.reasoning}")
+        out.append("")
+    return "\n".join(out).rstrip("\n") + "\n"

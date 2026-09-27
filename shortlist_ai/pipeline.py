@@ -9,7 +9,7 @@ from .blind import blind_profile, blind_roles
 from .extract import Cache, extract_resume
 from .prefilter import bm25_rank
 from .schema import CandidateResult, JobSpec, Resume
-from .score import score_candidate
+from .score import score_candidate, shuffle_requirements
 
 
 @dataclass
@@ -129,3 +129,28 @@ def match_jobs(resume_path: Path, jobs: dict[str, JobSpec], backend: Backend, *,
 
     matches.sort(key=lambda m: job_order(m.job_id, m.result))
     return JobMatches(resume_path.name, matches, errors, extracted.flags)
+
+
+@dataclass
+class OrderStability:
+    resume_name: str
+    job: JobSpec
+    results: list[CandidateResult]  # results[0]: requirements as written; others: shuffled with seed i
+
+
+def order_stability(resume_path: Path, job: JobSpec, backend: Backend, *, cache: Cache | None = None,
+                    orders: int = 10, progress=None) -> OrderStability:
+    """Score one resume against one job with the requirements in `orders` different orders.
+
+    Scoring ignores the order, so any difference is the model reacting to a detail that shouldn't
+    matter. Use it to see which verdicts behind a borderline score are stable and which aren't.
+    """
+    progress = progress or (lambda msg: None)
+    extracted = extract_resume(resume_path, backend, cache)
+    profile, roles = profile_for(extracted.resume), blind_roles(extracted.resume)
+    results = []
+    for seed in range(orders):
+        progress(f"order    {seed + 1}/{orders}")
+        ordered = job if seed == 0 else shuffle_requirements(job, seed)
+        results.append(score_candidate(resume_path.stem, resume_path.name, ordered, profile, backend, roles))
+    return OrderStability(resume_path.name, job, results)

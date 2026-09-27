@@ -170,6 +170,16 @@ def cmd_fairness(args, backend, cache):
         sys.exit(1)
 
 
+def cmd_stability(args, backend, cache):
+    from .pipeline import order_stability
+    from .report import stability_to_markdown
+
+    job = _job(args, backend, cache)
+    st = order_stability(args.resume, job, backend, cache=cache, orders=args.orders, progress=_progress)
+    _write(stability_to_markdown(st, _backend_desc(backend)), args.out)
+    _cost_note(backend)
+
+
 def cmd_eval(args, backend, cache):
     import json
 
@@ -229,6 +239,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--repeats", type=int, default=10,
                    help="Requirement orders used to estimate noise (default: as many as there are names)")
     p.set_defaults(func=cmd_fairness)
+
+    p = sub.add_parser("stability", parents=[common, job_args],
+                       help="Score one resume with the requirements in several orders; show which verdicts move")
+    p.add_argument("resume", type=Path, help="The resume (.pdf/.docx/.txt/.md)")
+    p.add_argument("--orders", type=int, default=10, help="Requirement orders to try (the first as written)")
+    p.set_defaults(func=cmd_stability)
 
     p = sub.add_parser("eval", parents=[common], help="Score ranking quality against graded labels")
     p.add_argument("--eval-dir", type=Path, default=Path("eval"))
