@@ -23,6 +23,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+[project.urls]
+Homepage = "https://github.com/vinayvobbili/shortlist-ai"
+Repository = "https://github.com/vinayvobbili/shortlist-ai"
+Issues = "https://github.com/vinayvobbili/shortlist-ai/issues"
+
 [project.optional-dependencies]
 # Local backend: Apple Silicon only. outlines needs Python <= 3.13 until it ships 3.14 wheels.
 local = ["mlx-lm>=0.31", "outlines>=1.3"]
