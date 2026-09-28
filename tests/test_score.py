@@ -70,3 +70,52 @@ def test_missing_assessment_scored_not_met():
     assert result.score == round(100 * 3 / 7, 1)
     assert any("no assessment returned for 'siem'" in f for f in result.flags)
     assert any("missing must-have: siem" in f for f in result.flags)
+
+
+ZOOX_JOB = JobSpec(title="Detection Engineer", requirements=[
+    Requirement(id="llm", description="Practical experience using LLM APIs (or highly advanced personal projects)",
+                kind="must_have"),
+    Requirement(id="splunk", kind="must_have",
+                description="Deep hands-on expertise with Splunk (SPL, Enterprise Security) or ElasticSIEM"),
+    Requirement(id="python", description="Python scripting", kind="nice_to_have"),
+])
+
+
+def test_echoed_requirement_and_absence_notes_are_set_aside_not_downgraded():
+    # Real cases from a local-model run: correct verdicts with real quotes, plus entries that
+    # restate the requirement or say what's missing. Those used to downgrade a correct "met".
+    result = finalize("c1", "c1.txt", ZOOX_JOB, PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("llm", "met", ["Built SOAR playbooks in Python", "Practical experience using LLM APIs"]),
+        a("splunk", "partial", ["Microsoft Sentinel", "ElasticSIEM is not mentioned"]),
+        a("python", "met", ["Python"]),
+    ]))
+    by_id = {r.requirement_id: r for r in result.requirements}
+    assert {k: r.verdict for k, r in by_id.items()} == {"llm": "met", "splunk": "partial", "python": "met"}
+    assert all(r.evidence_verified for r in result.requirements)
+    assert by_id["llm"].evidence == ["Built SOAR playbooks in Python"]
+    assert sum("ignored 1 evidence entry" in f for f in result.flags) == 2
+    assert not any("evidence not found" in f for f in result.flags)
+
+
+def test_only_echoes_left_means_no_evidence():
+    result = finalize("c1", "c1.txt", ZOOX_JOB, PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("llm", "met", ["Practical experience using LLM APIs"]),
+        a("splunk", "not_met", ["Splunk is not mentioned", "ElasticSIEM is not mentioned"]),
+        a("python", "met", ["Python"]),
+    ]))
+    by_id = {r.requirement_id: r for r in result.requirements}
+    assert by_id["llm"].verdict == "partial" and not by_id["llm"].evidence_verified
+    assert by_id["splunk"].verdict == "not_met" and by_id["splunk"].evidence == []
+    assert any("ignored 2 evidence entries" in f for f in result.flags)
+
+
+def test_hallucinated_quotes_are_still_downgraded():
+    # Not in the profile, not the requirement's wording, not an absence note: a made-up quote.
+    result = finalize("c1", "c1.txt", ZOOX_JOB, PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("llm", "met", ["Built SOAR playbooks in Python", "Fine-tuned GPT-4 for alert triage"]),
+        a("splunk", "not_met"),
+        a("python", "met", ["Python"]),
+    ]))
+    llm = result.requirements[0]
+    assert llm.verdict == "partial" and not llm.evidence_verified
+    assert any("'llm': evidence not found" in f for f in result.flags)

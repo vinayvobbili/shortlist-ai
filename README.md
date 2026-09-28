@@ -455,6 +455,31 @@ whole verdict. Reports:
 [`results/stability_carlos_data_analyst_before.md`](results/stability_carlos_data_analyst_before.md),
 [`results/stability_carlos_data_analyst.md`](results/stability_carlos_data_analyst.md).
 
+### Evidence that isn't a quote
+
+Scoring a real resume against a real 13-requirement detection-engineering posting with
+`shortlist jobs` gave 35/100 and 1 of 7 must-haves. Checking the quotes one by one showed that the
+local model often padded `evidence` with entries that aren't quotes at all: the requirement's own
+wording ("Practical experience using LLM APIs") or a note about what's missing ("Splunk is not
+mentioned"). Eleven of the 13 assessments had one. Since one unfound quote downgrades the verdict,
+four correct "met" verdicts (Python, LLM APIs, incident response, open source), each backed by real
+quotes, dropped to partial.
+
+The quote check now sets these entries aside before verifying, and flags each case: an entry that
+isn't in the profile and is either contained in the requirement's text or says something "is not
+mentioned" (or similar) is not counted as evidence. The prompt also says so directly. A made-up quote
+still downgrades, and a "met" left with no real quote still counts as having no evidence.
+
+| The same resume and posting | Before | After |
+|---|---|---|
+| Score | 35 | 59 |
+| Must-haves met | 1/7 | 4/7 |
+| Verdicts with an unverified quote | 11 | 0 |
+
+The "after" run also uses the new prompt, so part of the change comes from the model following it.
+On a second posting, the one remaining flag was a real paraphrase ("cut" for "cutting"), which still
+downgrades as intended. The eval sets have not been re-run with this change.
+
 ## Fairness testing
 
 ```bash
