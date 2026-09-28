@@ -124,7 +124,8 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
             a = a.model_copy(update={"evidence": [q for q in a.evidence if q not in ignored]})
             flags.append(f"'{req.id}': ignored {len(ignored)} evidence entr{'y' if len(ignored) == 1 else 'ies'} "
                          f"that quote the requirement or note an absence, not the profile")
-        verified = all(quote_in_profile(q, profile) for q in a.evidence)
+        unverified = [q for q in a.evidence if not quote_in_profile(q, profile)]
+        verified = not unverified
         verdict = a.verdict
         if a.verdict != "not_met" and not a.evidence:
             verified = False
@@ -132,7 +133,8 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
             verdict = DOWNGRADE[verdict]
             flags.append(f"'{req.id}': evidence not found in profile; downgraded {a.verdict} -> {verdict}")
         scored.append(ScoredRequirement(**{**a.model_dump(), "verdict": verdict},
-                                        kind=req.kind, evidence_verified=verified))
+                                        kind=req.kind, evidence_verified=verified,
+                                        unverified_quotes=unverified, ignored_evidence=ignored))
 
     total = sum(WEIGHTS[r.kind] for r in scored)
     earned = sum(WEIGHTS[r.kind] * CREDIT[r.verdict] for r in scored)

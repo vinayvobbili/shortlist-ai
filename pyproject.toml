@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shortlist-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Evidence-backed, blind resume shortlisting with LLMs - with the evals and bias tests to check it."
 readme = "README.md"
 license = "MIT"

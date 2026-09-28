@@ -16,9 +16,9 @@ DISCLAIMER = (
 def _evidence_table(result) -> list[str]:
     out = ["| Requirement | Verdict | Evidence |", "|---|---|---|"]
     for req in result.requirements:
-        evidence = "<br>".join(f"“{q}”" for q in req.evidence) or "—"
-        if req.evidence and not req.evidence_verified:
-            evidence += "<br>⚠️ not found in profile"
+        missing = set(req.unverified_quotes)
+        evidence = "<br>".join(f"“{q}”" + (" ⚠️ not found in profile" if q in missing else "")
+                               for q in req.evidence) or "—"
         out.append(f"| `{req.requirement_id}` | {VERDICT_MARK[req.verdict]} | {evidence} |")
     return out
 

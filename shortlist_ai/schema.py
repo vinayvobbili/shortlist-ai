@@ -108,6 +108,11 @@ class RoleRelevance(BaseModel):
 class ScoredRequirement(RequirementAssessment):
     kind: Literal["must_have", "nice_to_have"]
     evidence_verified: bool = Field(description="Every evidence quote was found in the candidate profile")
+    unverified_quotes: list[str] = Field(default_factory=list,
+                                         description="Evidence quotes not found in the candidate profile")
+    ignored_evidence: list[str] = Field(default_factory=list,
+                                        description="Entries set aside as not quotes: the requirement's own "
+                                                    "wording or a note that something is missing")
 
 
 class CandidateResult(BaseModel):

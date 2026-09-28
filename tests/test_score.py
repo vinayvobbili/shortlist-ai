@@ -93,6 +93,9 @@ def test_echoed_requirement_and_absence_notes_are_set_aside_not_downgraded():
     assert {k: r.verdict for k, r in by_id.items()} == {"llm": "met", "splunk": "partial", "python": "met"}
     assert all(r.evidence_verified for r in result.requirements)
     assert by_id["llm"].evidence == ["Built SOAR playbooks in Python"]
+    assert by_id["llm"].ignored_evidence == ["Practical experience using LLM APIs"]
+    assert by_id["splunk"].ignored_evidence == ["ElasticSIEM is not mentioned"]
+    assert all(r.unverified_quotes == [] for r in result.requirements)
     assert sum("ignored 1 evidence entry" in f for f in result.flags) == 2
     assert not any("evidence not found" in f for f in result.flags)
 
@@ -118,4 +121,17 @@ def test_hallucinated_quotes_are_still_downgraded():
     ]))
     llm = result.requirements[0]
     assert llm.verdict == "partial" and not llm.evidence_verified
+    assert llm.unverified_quotes == ["Fine-tuned GPT-4 for alert triage"]  # the one that failed, not both
     assert any("'llm': evidence not found" in f for f in result.flags)
+
+
+def test_report_marks_only_the_quote_that_failed():
+    from shortlist_ai.report import _evidence_table
+    result = finalize("c1", "c1.txt", ZOOX_JOB, PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("llm", "met", ["Built SOAR playbooks in Python", "Fine-tuned GPT-4 for alert triage"]),
+        a("splunk", "not_met"),
+        a("python", "met", ["Python"]),
+    ]))
+    row = next(line for line in _evidence_table(result) if line.startswith("| `llm`"))
+    assert "“Built SOAR playbooks in Python”<br>" in row
+    assert "“Fine-tuned GPT-4 for alert triage” ⚠️ not found in profile" in row
