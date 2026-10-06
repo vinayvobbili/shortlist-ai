@@ -110,11 +110,18 @@ class LocalBackend:
             {"role": "system", "content": f"{system}\n\nOutput JSON matching this schema:\n{schema}"},
             {"role": "user", "content": text},
         ])
-        raw = _load_local_generator(self.model)(prompt, output_type, max_tokens=self.max_tokens)
-        try:
-            return output_type.model_validate_json(raw)
-        except ValueError as e:
-            raise BackendError(f"Local model output didn't validate (likely truncated): {e}") from e
+        # A long posting can need more output than the default allows; the decoder stops
+        # mid-JSON when it runs out, so try again with room to spare before giving up.
+        budget = self.max_tokens
+        while True:
+            raw = _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
+            try:
+                return output_type.model_validate_json(raw)
+            except ValueError as e:
+                if budget >= self.max_tokens * 4:
+                    raise BackendError(f"Local model output didn't validate at {budget} tokens "
+                                       f"(likely truncated): {e}") from e
+                budget *= 2
 
 
 @lru_cache(maxsize=1)
