@@ -1,5 +1,5 @@
 from shortlist_ai.schema import CandidateAssessment, JobSpec, Requirement, RequirementAssessment
-from shortlist_ai.score import finalize, quote_in_profile
+from shortlist_ai.score import SCORE_SYSTEM, finalize, quote_in_profile
 
 PROFILE = """CANDIDATE PROFILE
 - Senior Security Engineer at Northwind Health (4 yrs, current role)
@@ -24,6 +24,12 @@ def test_quote_matching():
     assert quote_in_profile("Skills:  python,   splunk", PROFILE)
     assert not quote_in_profile("Led a team of 12 engineers", PROFILE)
     assert not quote_in_profile("...", PROFILE)
+
+
+def test_rules_say_how_and_and_or_lists_are_met():
+    # "reverse engineering and security analysis" got full credit from malware forensics alone.
+    assert 'joins items with "and": met needs evidence for each item' in SCORE_SYSTEM
+    assert 'joins items with "or": evidence for one item is enough' in SCORE_SYSTEM
 
 
 def test_labeled_list_with_items_left_out():

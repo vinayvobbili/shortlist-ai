@@ -37,19 +37,36 @@ def test_union_months_counts_overlaps_once():
     assert _union_months([(0, 12), (6, 18), (30, 36)]) == 24
 
 
+def listed_roles(prompt: str) -> list[tuple[str, list[str]]]:
+    """(heading, listed work) for each role in a roles prompt."""
+    roles = []
+    for line in prompt.splitlines():
+        if m := re.match(r"^\d+\. (.*)", line):
+            roles.append((m.group(1), []))
+        elif (m := re.match(r"^\s+\* (.*)", line)) and roles:
+            roles[-1][1].append(m.group(1))
+    return roles
+
+
 class RolesBackend:
-    """Marks the given role numbers as main work in the field, and `touches` as touching it."""
-    def __init__(self, main, touches=()):
-        self.main, self.touches, self.calls = set(main), set(touches), []
+    """Marks the given role numbers as main work in the field, and `touches` as touching it. A main role
+    quotes its first line of work (its heading when it lists none), or `quotes[n]` when given: pass
+    quotes={n: []} for a main role with no quote."""
+    def __init__(self, main, touches=(), quotes=None):
+        self.main, self.touches, self.quotes, self.calls = set(main), set(touches), quotes or {}, []
 
     def structured(self, system, content, output_type):
         self.calls.append(output_type.__name__)
         if output_type is RoleRelevance:
-            n = len(re.findall(r"^\d+\. ", content[0]["text"], re.M))
+            listed = listed_roles(content[0]["text"])
+
+            def judged(i, heading, work):
+                if i not in self.main:
+                    return RoleJudgment(role=i, fit="touches" if i in self.touches else "no", reason="")
+                return RoleJudgment(role=i, fit="main", reason="", evidence=self.quotes.get(i, (work or [heading])[:1]))
             return RoleRelevance(field="security engineering", roles=[
-                RoleJudgment(role=i, fit="main" if i in self.main else "touches" if i in self.touches else "no",
-                             reason="") for i in range(1, n + 1)] + [
-                RoleJudgment(role=99, fit="main", reason="out of range")])
+                judged(i, heading, work) for i, (heading, work) in enumerate(listed, 1)] + [
+                RoleJudgment(role=99, fit="main", reason="out of range", evidence=["anything"])])
         # Main scorer: claims the years requirement is met, as the model used to.
         return CandidateAssessment(assessments=[RequirementAssessment(
             requirement_id="years_security", verdict="met", evidence=[], reasoning="10 years of experience")],
@@ -97,11 +114,25 @@ def test_scorer_verdict_is_replaced_and_evidence_verifies(resume):
 
     result = score_candidate("c", "c.md", job, profile, RolesBackend({1}), roles)
     req = result.requirements[0]
-    assert req.verdict == "met" and req.evidence_verified            # role lines are quoted from the profile
-    assert req.evidence == ["Senior Security Engineer at Northwind Health (4 yrs 6 mos, current role)"]
+    assert req.verdict == "met" and req.evidence_verified            # quotes from the role's own work
+    assert req.evidence == [roles[0].highlights[0]]
 
     assert score_candidate("c", "c.md", job, profile, backend).requirements[0].verdict == "partial"  # no roles:
     # the model's verdict stands (downgraded from met because it quoted nothing)
+
+
+def test_main_needs_a_quote_from_the_roles_own_work(resume):
+    roles = blind_roles(resume, TODAY)  # 4 yrs 6 mos current + 3 yrs 8 mos past
+    other_roles_line = roles[0].highlights[0]
+    for quotes in ({2: []}, {2: [other_roles_line]}, {2: [roles[1].heading]}, {2: ["Ran red team exercises"]}):
+        a = assess_years(YEARS, 4, roles, RolesBackend({1, 2}, quotes=quotes))
+        assert a.verdict == "met" and "4 yrs 6 mos" in a.reasoning and "across 1 role" in a.reasoning
+        assert "so not counted: Security Analyst II at Contoso Bank" in a.reasoning
+        assert a.evidence == [roles[0].highlights[0]]
+    a = assess_years(YEARS, 4, roles, RolesBackend({1}, quotes={1: []}))
+    assert a.verdict == "not_met" and a.evidence == [] and "so not counted" in a.reasoning
+    a = assess_years(YEARS, 4, roles, RolesBackend({2}, quotes={2: ["Tuned Splunk correlation searches"]}))
+    assert a.verdict == "partial" and a.evidence == ["Tuned Splunk correlation searches"]  # a part of a line is enough
 
 
 def test_role_lines_match_the_profile(resume):

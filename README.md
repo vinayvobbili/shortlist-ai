@@ -480,6 +480,25 @@ The "after" run also uses the new prompt, so part of the change comes from the m
 On a second posting, the one remaining flag was a real paraphrase ("cut" for "cutting"), which still
 downgrades as intended. The eval sets have not been re-run with this change.
 
+### Evidence for years and for "and" lists
+
+Auditing a 100/100 score for a real resume against a real intrusion-operations posting found two
+generous paths. Both gave full credit that the resume doesn't support:
+
+- **Years.** "5 years of security assessments or security design reviews or threat modeling" was met
+  because the roles call labeled two incident-response roles "main", and their headings were the only
+  evidence. The resume never mentions design reviews or threat modeling. A "main" role now has to quote
+  a line of its own listed work (its heading only when it lists no work), checked in code. Without a
+  quote it doesn't count, and the reasoning names it. Evidence for a years requirement is now those
+  quotes rather than the role headings.
+- **"And" lists.** "Reverse engineering and security analysis" got met from malware forensics alone.
+  The scoring prompt now says that items joined with "and" each need evidence (some is partial), while
+  one item of an "or" list is enough.
+
+On the audited case the expected effect is a score in the 80s with the assessments requirement as a
+missing must-have. **Neither change has been run on the eval sets or on that case yet**: the local
+model couldn't run when this was written. Treat it as unmeasured until those reports exist.
+
 ## Fairness testing
 
 ```bash

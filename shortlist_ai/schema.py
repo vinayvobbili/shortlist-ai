@@ -98,6 +98,9 @@ class RoleJudgment(BaseModel):
         description="main: the role's main work is in the field. touches: it involves some of the field's "
                     "tasks, but its main work is something else. no: unrelated")
     reason: str = Field(description="A few words")
+    evidence: list[str] = Field(default_factory=list, description=(
+        "For main: one or two lines of this role's listed work, copied verbatim, that show work in the "
+        "field. Empty for touches and no"))
 
 
 class RoleRelevance(BaseModel):
