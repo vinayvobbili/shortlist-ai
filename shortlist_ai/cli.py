@@ -183,7 +183,14 @@ def cmd_stability(args, backend, cache):
 def cmd_eval(args, backend, cache):
     import json
 
-    from .evaluate import check_verdicts, eval_report, run_eval, stability_report
+    from .evaluate import (
+        check_verdicts,
+        eval_report,
+        failure_banner,
+        run_eval,
+        scoring_failures,
+        stability_report,
+    )
 
     runs = run_eval(args.eval_dir, backend, cache, progress=_progress, repeats=args.repeats)
     path = args.eval_dir / "verdicts.json"
@@ -191,8 +198,14 @@ def cmd_eval(args, backend, cache):
     first = runs[0]
     verdicts = check_verdicts(first.job_evals, expected) if expected else None
     extra = stability_report(runs, expected) if len(runs) > 1 else None
-    _write(eval_report(first.job_evals, first.resume_evals, _backend_desc(backend), verdicts, extra), args.out)
+    banner = failure_banner(runs)
+    _write(eval_report(first.job_evals, first.resume_evals, _backend_desc(backend), verdicts, extra, banner),
+           args.out)
     _cost_note(backend)
+    failed, attempted, first_error = scoring_failures(runs)
+    if failed and not args.allow_failures:
+        raise SystemExit(f"Error: invalid run: {failed} of {attempted} scorings failed (first: {first_error[:200]}). "
+                         "The report is marked INVALID; pass --allow-failures to accept it.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -250,6 +263,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--eval-dir", type=Path, default=Path("eval"))
     p.add_argument("--repeats", type=int, default=1,
                    help="Runs; runs after the first shuffle the requirements, to measure how much results move")
+    p.add_argument("--allow-failures", action="store_true",
+                   help="Exit 0 even if some scorings failed (the report is still marked INVALID)")
     p.set_defaults(func=cmd_eval)
     return ap
 

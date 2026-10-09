@@ -4,11 +4,19 @@ instance of a Pydantic model.
 - ClaudeBackend: Anthropic API with structured outputs. Reads PDFs as pages, so
   scanned and multi-column resumes work.
 - LocalBackend: an MLX model on Apple Silicon with schema-constrained decoding
-  (Outlines). Nothing leaves the machine. Text only.
+  (Outlines). Nothing leaves the machine. Text only. Processes using it take turns on the
+  GPU (ModelLock), so two programs scoring at once don't run each other out of memory.
 """
 
+import fcntl
 import json
+import os
+import sys
+import time
+from collections.abc import Callable
+from contextlib import contextmanager
 from functools import lru_cache
+from pathlib import Path
 from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
@@ -88,14 +96,111 @@ class ClaudeBackend:
         return response.parsed_output
 
 
+def _say(msg: str):
+    print(f"  {msg}", file=sys.stderr, flush=True)
+
+
+class ModelLock:
+    """One process at a time on the local model, across every program on this machine.
+
+    An exclusive OS file lock (flock) taken for each call, not for the life of the process, so a
+    long-running program that keeps its model loaded doesn't hold the GPU while idle. The holder
+    writes its pid into the file, so a waiting process can say whom it waits for. The OS drops the
+    lock when the holder exits, even if it crashes, so a dead process never blocks the next one.
+
+    The file is ~/.cache/shortlist-ai/local-model.lock unless SHORTLIST_MODEL_LOCK names another.
+    Waiting has no limit unless `timeout` (or SHORTLIST_MODEL_LOCK_TIMEOUT, in seconds) sets one."""
+
+    POLL = 0.5
+
+    def __init__(self, path: Path | None = None, timeout: float | None = None,
+                 notify: Callable[[str], None] | None = None):
+        self.path = Path(path or os.environ.get("SHORTLIST_MODEL_LOCK")
+                         or Path.home() / ".cache" / "shortlist-ai" / "local-model.lock")
+        env_timeout = os.environ.get("SHORTLIST_MODEL_LOCK_TIMEOUT")
+        self.timeout = timeout if timeout is not None else (float(env_timeout) if env_timeout else None)
+        self.notify = notify or _say
+
+    def holder(self) -> str:
+        try:
+            return self.path.read_text().strip() or "unknown"
+        except OSError:
+            return "unknown"
+
+    @contextmanager
+    def held(self):
+        """Wait for the lock, hold it for the `with` block, and always let it go afterwards. Each
+        use opens the file afresh, so threads of one process also take turns."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a+") as f:  # closing the file drops the lock, whatever happens
+            if not self._try(f):
+                self.notify(f"waiting for another process using the local model (pid {self.holder()})")
+                deadline = None if self.timeout is None else time.monotonic() + self.timeout
+                while not self._try(f):
+                    if deadline is not None and time.monotonic() >= deadline:
+                        raise BackendError(f"Gave up after {self.timeout:g}s waiting for the local model "
+                                           f"(held by pid {self.holder()}; lock file {self.path})")
+                    time.sleep(self.POLL)
+            try:
+                f.seek(0)
+                f.truncate()
+                f.write(str(os.getpid()))
+                f.flush()
+                yield
+            finally:
+                f.seek(0)
+                f.truncate()
+                f.flush()
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+    @staticmethod
+    def _try(f) -> bool:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            return False
+
+
+def _out_of_gpu_memory(e: BaseException) -> bool:
+    return isinstance(e, RuntimeError) and "insufficient memory" in str(e).lower()
+
+
+def _free_gpu_cache():
+    try:
+        import mlx.core as mx
+    except ImportError:
+        return
+    clear = getattr(mx, "clear_cache", None) or getattr(getattr(mx, "metal", None), "clear_cache", None)
+    if clear:
+        clear()
+
+
 class LocalBackend:
     name = "local"
     reads_documents = False
+    OOM_PAUSE = 5.0  # seconds to wait before the one retry after the GPU ran out of memory
 
-    def __init__(self, model: str = LOCAL_MODEL, max_tokens: int = 4096):
+    def __init__(self, model: str = LOCAL_MODEL, max_tokens: int = 4096, lock: ModelLock | None = None):
         self.model = model
         self.max_tokens = max_tokens
         self.usage = Usage()
+        self.lock = lock or ModelLock()
+
+    def _generate(self, prompt, output_type, budget: int) -> str:
+        """One generation, holding the GPU for its length (the first also loads the model). If the
+        GPU still runs out of memory (something outside shortlist-ai is using it), free what MLX
+        has cached and try once more before failing."""
+        with self.lock.held():
+            try:
+                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
+            except RuntimeError as e:
+                if not _out_of_gpu_memory(e):
+                    raise
+                _say(f"the GPU ran out of memory; retrying once in {self.OOM_PAUSE:g}s")
+                _free_gpu_cache()
+                time.sleep(self.OOM_PAUSE)
+                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
 
     def structured(self, system: str, content: list[dict], output_type: type[T]) -> T:
         from outlines.inputs import Chat
@@ -114,7 +219,7 @@ class LocalBackend:
         # mid-JSON when it runs out, so try again with room to spare before giving up.
         budget = self.max_tokens
         while True:
-            raw = _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
+            raw = self._generate(prompt, output_type, budget)
             try:
                 return output_type.model_validate_json(raw)
             except ValueError as e:

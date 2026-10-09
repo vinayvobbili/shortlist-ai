@@ -39,3 +39,19 @@ Grading notes, so disagreements can be argued:
   the AWS Security certification, but no hands-on AWS security work in the experience section. Ben has a
   security background but no AWS or infrastructure as code. Oliver has AWS, Terraform and Python
   but no security experience. Wei (AWS and Python, no IaC or security) and Amara (no AWS) are 0.
+
+## When a scoring fails
+
+A (job, resume) pair can fail to score, for example when the local model runs out of GPU memory. A
+failed candidate is ranked last in its job, and its requirement verdicts count as "missing". That is
+the honest reading of one run, because in use a failure means the candidate isn't shortlisted. But
+it makes the metrics depend on the failures, not only on the scorer, so a run with failures can't be
+compared with one without. `shortlist eval` therefore puts an **INVALID RUN** banner at the top of
+the report, naming how many scorings failed and the first error, and exits non-zero. Pass
+`--allow-failures` to accept such a run; the banner stays. Before comparing two versions of the
+tool, rerun until neither side has failures.
+
+Programs using the local backend take turns on the GPU through a lock file
+(`~/.cache/shortlist-ai/local-model.lock`), so an eval no longer collides with another program
+scoring at the same time. Something outside shortlist-ai can still use the GPU; an out-of-memory
+error is retried once before it counts as a failure.

@@ -3,6 +3,13 @@ import pytest
 from shortlist_ai.schema import Education, Experience, Link, Resume
 
 
+@pytest.fixture(autouse=True)
+def _model_lock_in_tmp(tmp_path, monkeypatch):
+    """Tests never touch the real local-model lock in ~/.cache, which a running program may hold."""
+    monkeypatch.setenv("SHORTLIST_MODEL_LOCK", str(tmp_path / "local-model.lock"))
+    monkeypatch.delenv("SHORTLIST_MODEL_LOCK_TIMEOUT", raising=False)
+
+
 @pytest.fixture
 def resume() -> Resume:
     return Resume(

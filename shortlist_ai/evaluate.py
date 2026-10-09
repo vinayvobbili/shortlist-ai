@@ -160,9 +160,35 @@ def check_verdicts(job_evals: list[JobEval], expected: dict) -> list[VerdictChec
             for req, verdict in by_req.items()]
 
 
+def scoring_failures(runs: list[EvalRun]) -> tuple[int, int, str]:
+    """(failed, attempted, first error) over every (job, resume) scoring in every run."""
+    failed = attempted = 0
+    first = ""
+    for r in runs:
+        for e in r.job_evals:
+            failed += len(e.ranking.errors)
+            attempted += len(e.ranking.results) + len(e.ranking.errors)
+            if e.ranking.errors and not first:
+                cid, err = next(iter(e.ranking.errors.items()))
+                first = f"{e.job} / {cid}: {err}"
+    return failed, attempted, first
+
+
+def failure_banner(runs: list[EvalRun]) -> list[str]:
+    """A run where scorings failed isn't comparable to one where none did, so its report says so
+    first. Empty when every scoring succeeded."""
+    failed, attempted, first = scoring_failures(runs)
+    if not failed:
+        return []
+    return [f"> **INVALID RUN: {failed} of {attempted} scorings failed** (first error: {first[:200]}). "
+            "The metrics below rank failed candidates last and count their verdicts as missing, so they "
+            "are not comparable to a run without failures. Fix the cause and run again.", ""]
+
+
 def eval_report(evals: list[JobEval], resume_evals_: list[ResumeEval], backend_desc: str,
-                verdicts: list[VerdictCheck] | None = None, extra: list[str] | None = None) -> str:
-    out = [f"# Ranking eval: `{backend_desc}`", "",
+                verdicts: list[VerdictCheck] | None = None, extra: list[str] | None = None,
+                banner: list[str] | None = None) -> str:
+    out = [f"# Ranking eval: `{backend_desc}`", "", *(banner or []),
            "## Candidates for each job (`shortlist rank`)", "",
            "| Job | NDCG@3 | NDCG@5 | P@3 | Top-1 correct |", "|---|---|---|---|---|"]
     for e in evals:
