@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import time
+import zlib
 from collections.abc import Callable
 from contextlib import contextmanager
 from functools import lru_cache
@@ -176,6 +177,22 @@ def _free_gpu_cache():
         clear()
 
 
+def _looping(raw: str, window: int = 4000) -> bool:
+    """True when the output ends in the same stretch of text over and over: a model stuck in a
+    loop, which more room won't fix. Repeated text compresses to almost nothing; ordinary JSON
+    doesn't (about a third of its size)."""
+    tail = raw[-window:]
+    return len(tail) == window and len(zlib.compress(tail.encode())) < window * 0.1
+
+
+def _loop_breaker():
+    """Sampling with some randomness, in place of always taking the likeliest token, which is
+    what keeps a stuck model repeating."""
+    from mlx_lm.sample_utils import make_sampler
+
+    return make_sampler(temp=0.5, top_p=0.95)
+
+
 class LocalBackend:
     name = "local"
     reads_documents = False
@@ -187,20 +204,20 @@ class LocalBackend:
         self.usage = Usage()
         self.lock = lock or ModelLock()
 
-    def _generate(self, prompt, output_type, budget: int) -> str:
+    def _generate(self, prompt, output_type, budget: int, **options) -> str:
         """One generation, holding the GPU for its length (the first also loads the model). If the
         GPU still runs out of memory (something outside shortlist-ai is using it), free what MLX
         has cached and try once more before failing."""
         with self.lock.held():
             try:
-                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
+                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget, **options)
             except RuntimeError as e:
                 if not _out_of_gpu_memory(e):
                     raise
                 _say(f"the GPU ran out of memory; retrying once in {self.OOM_PAUSE:g}s")
                 _free_gpu_cache()
                 time.sleep(self.OOM_PAUSE)
-                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget)
+                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget, **options)
 
     def structured(self, system: str, content: list[dict], output_type: type[T]) -> T:
         from outlines.inputs import Chat
@@ -216,16 +233,24 @@ class LocalBackend:
             {"role": "user", "content": text},
         ])
         # A long posting can need more output than the default allows; the decoder stops
-        # mid-JSON when it runs out, so try again with room to spare before giving up.
+        # mid-JSON when it runs out, so try again with room to spare before giving up. A model
+        # stuck repeating itself would only repeat itself for longer, so it gets one try with
+        # some randomness instead.
         budget = self.max_tokens
+        options = {}
         while True:
-            raw = self._generate(prompt, output_type, budget)
+            raw = self._generate(prompt, output_type, budget, **options)
             try:
                 return output_type.model_validate_json(raw)
             except ValueError as e:
-                if budget >= self.max_tokens * 4:
-                    raise BackendError(f"Local model output didn't validate at {budget} tokens "
-                                       f"(likely truncated): {e}") from e
+                looping = _looping(raw)
+                if looping and not options:
+                    _say("the model got stuck repeating itself; trying once more with some randomness")
+                    options = {"sampler": _loop_breaker()}
+                    continue
+                if looping or budget >= self.max_tokens * 4:
+                    why = "stuck repeating itself" if looping else "likely truncated"
+                    raise BackendError(f"Local model output didn't validate at {budget} tokens ({why}): {e}") from e
                 budget *= 2
 
 
