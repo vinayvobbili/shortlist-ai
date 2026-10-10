@@ -1,5 +1,6 @@
 """End-to-end: resumes + job -> ranked, evidence-backed shortlist."""
 
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -8,6 +9,7 @@ from .backends import Backend
 from .blind import blind_profile, blind_roles
 from .extract import Cache, extract_resume
 from .prefilter import bm25_rank
+from .prompts import resolve
 from .schema import CandidateResult, JobSpec, Resume
 from .score import score_candidate, shuffle_requirements
 
@@ -27,8 +29,11 @@ def profile_for(resume: Resume, blind: bool = True) -> str:
 
 
 def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cache | None = None,
-         prefilter_k: int = 25, blind: bool = True, workers: int = 1, progress=None) -> Ranking:
+         prefilter_k: int = 25, blind: bool = True, workers: int = 1, progress=None,
+         prompts: Mapping[str, str] | None = None) -> Ranking:
+    """prompts: {name: text} in place of the defaults (see prompts.py), checked before any model call."""
     progress = progress or (lambda msg: None)
+    prompts = resolve(prompts)
     errors: dict[str, str] = {}
 
     # Stage 1: extraction (cached per file).
@@ -39,7 +44,7 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
         candidate_id = path.stem
         try:
             progress(f"extract  {candidate_id}")
-            extracted = extract_resume(path, backend, cache)
+            extracted = extract_resume(path, backend, cache, prompts)
             profiles[candidate_id] = (path, profile_for(extracted.resume, blind))
             roles[candidate_id] = blind_roles(extracted.resume)
             extraction_flags[candidate_id] = extracted.flags
@@ -59,7 +64,7 @@ def rank(job: JobSpec, resume_paths: list[Path], backend: Backend, *, cache: Cac
         candidate_id, (path, profile) = item
         progress(f"score    {candidate_id}")
         try:
-            result = score_candidate(candidate_id, path.name, job, profile, backend, roles[candidate_id])
+            result = score_candidate(candidate_id, path.name, job, profile, backend, roles[candidate_id], prompts)
             result.flags = extraction_flags[candidate_id] + result.flags
             return result
         except Exception as e:
@@ -100,16 +105,18 @@ class JobMatches:
 
 
 def match_jobs(resume_path: Path, jobs: dict[str, JobSpec], backend: Backend, *, cache: Cache | None = None,
-               workers: int = 1, progress=None) -> JobMatches:
+               workers: int = 1, progress=None, prompts: Mapping[str, str] | None = None) -> JobMatches:
     """The reverse of rank(): one resume, many jobs, best fit first.
 
     Uses the same blind profile and scorer as rank(), so a (resume, job) score means the same
     thing in both directions. Scores are comparable across jobs because each is the weighted
     share of that job's requirements met; ties go to the job with more must-haves met.
+    prompts: {name: text} in place of the defaults (see prompts.py), checked before any model call.
     """
     progress = progress or (lambda msg: None)
+    prompts = resolve(prompts)
     progress(f"extract  {resume_path.stem}")
-    extracted = extract_resume(resume_path, backend, cache)
+    extracted = extract_resume(resume_path, backend, cache, prompts)
     profile = profile_for(extracted.resume)
     roles = blind_roles(extracted.resume)
     errors: dict[str, str] = {}
@@ -119,7 +126,7 @@ def match_jobs(resume_path: Path, jobs: dict[str, JobSpec], backend: Backend, *,
         progress(f"score    {job_id}")
         try:
             return JobMatch(job_id, job, score_candidate(resume_path.stem, resume_path.name, job, profile, backend,
-                                                     roles))
+                                                     roles, prompts))
         except Exception as e:
             errors[job_id] = f"{type(e).__name__}: {e}"
             return None
@@ -139,18 +146,19 @@ class OrderStability:
 
 
 def order_stability(resume_path: Path, job: JobSpec, backend: Backend, *, cache: Cache | None = None,
-                    orders: int = 10, progress=None) -> OrderStability:
+                    orders: int = 10, progress=None, prompts: Mapping[str, str] | None = None) -> OrderStability:
     """Score one resume against one job with the requirements in `orders` different orders.
 
     Scoring ignores the order, so any difference is the model reacting to a detail that shouldn't
     matter. Use it to see which verdicts behind a borderline score are stable and which aren't.
     """
     progress = progress or (lambda msg: None)
-    extracted = extract_resume(resume_path, backend, cache)
+    prompts = resolve(prompts)
+    extracted = extract_resume(resume_path, backend, cache, prompts)
     profile, roles = profile_for(extracted.resume), blind_roles(extracted.resume)
     results = []
     for seed in range(orders):
         progress(f"order    {seed + 1}/{orders}")
         ordered = job if seed == 0 else shuffle_requirements(job, seed)
-        results.append(score_candidate(resume_path.stem, resume_path.name, ordered, profile, backend, roles))
+        results.append(score_candidate(resume_path.stem, resume_path.name, ordered, profile, backend, roles, prompts))
     return OrderStability(resume_path.name, job, results)

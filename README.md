@@ -195,6 +195,27 @@ and a skills list, which the scorer's rules say should be partial.
 
 </details>
 
+## Editing the prompts
+
+Every prompt lives in [`shortlist_ai/prompts.py`](shortlist_ai/prompts.py), by name:
+`resume_system`, `job_system`, `score_system`, `score_request`, `years_system` and `years_request`.
+`rank`, `match_jobs`, `order_stability`, `extract_resume`, `extract_job` and `score_candidate` take
+an optional `prompts={name: text}` that replaces those defaults; a name left out keeps its default.
+
+```python
+from shortlist_ai.prompts import PROMPTS, resolve
+
+print(PROMPTS["score_system"].default)       # the text, a one-line `about`, and any placeholders
+match_jobs(resume, jobs, backend, prompts={"score_system": my_rules})
+```
+
+System prompts are sent as written. The two `*_request` templates lay out the data and must keep
+their placeholders (`{title}`, `{requirements}`, `{profile}`; `{requirement}`, `{roles}`): a missing
+or unknown one raises `PromptError` before any model call. An edited prompt changes the scores, so
+compare scores only between runs with the same prompts, and rerun the [evaluation](#evaluation)
+before trusting one. Extractions are cached by prompt text, so an edited extraction prompt extracts
+afresh.
+
 ## Evaluation
 
 `eval/` holds 18 **synthetic** candidates in mixed formats (DOCX, text PDF, two-column PDF,

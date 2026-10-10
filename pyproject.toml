@@ -50,7 +50,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 # Prompt text: wrapping it would change what the model sees (and invalidate the cache).
-"shortlist_ai/{extract,score}.py" = ["E501"]
+"shortlist_ai/prompts.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
