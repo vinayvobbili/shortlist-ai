@@ -10,9 +10,10 @@ here, deterministically, so scores are auditable and weights are adjustable:
 A core must-have (the role's central skill, marked by the extractor) caps the score when it isn't
 met, because the weights alone let a candidate miss the job's whole point and still score well:
 
-  core not_met: score at most 40      core partial: score at most 65
+  core not_met: score at most 40      core partial: 65, plus a quarter of what it scored above 65
 
-The cap is recorded in the result's flags.
+The partial cap is soft so that capped jobs keep their order instead of all tying at 65; a job with a
+core partial still can't pass 73.75. The cap is recorded in the result's flags.
 
 Evidence that can't be found in the profile is treated as hallucinated: the
 verdict is downgraded one level and the candidate is flagged for review. Entries
@@ -36,7 +37,8 @@ from .years import assess_years, min_years
 
 WEIGHTS = {"must_have": 3.0, "nice_to_have": 1.0}
 CREDIT = {"met": 1.0, "partial": 0.5, "not_met": 0.0}
-CORE_CAP = {"not_met": 40.0, "partial": 65.0}  # highest score allowed while a core must-have has this verdict
+CORE_CAP = {"not_met": 40.0, "partial": 65.0}  # where a core must-have with this verdict caps the score
+ABOVE_CAP = {"not_met": 0.0, "partial": 0.25}  # the share of the score above the cap that's kept
 DOWNGRADE = {"met": "partial", "partial": "not_met", "not_met": "not_met"}
 
 
@@ -110,9 +112,10 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
     for r in musts:
         cap = CORE_CAP.get(r.verdict) if r.core else None
         if cap is not None and score > cap:
+            capped = round(cap + (score - cap) * ABOVE_CAP[r.verdict], 1)
             flags.append(f"core requirement '{r.requirement_id}' {r.verdict.replace('_', ' ')}: "
-                         f"score capped at {cap:.0f} (was {score})")
-            score = cap
+                         f"score capped at {capped:g} (was {score})")
+            score = capped
     return CandidateResult(
         candidate_id=candidate_id,
         source_file=source_file,

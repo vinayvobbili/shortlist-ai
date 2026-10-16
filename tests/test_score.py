@@ -167,10 +167,23 @@ def test_core_not_met_caps_the_score_at_40_and_says_so():
     assert [r.core for r in result.requirements] == [True, False, False]
 
 
-def test_core_partial_caps_the_score_at_65():
+def test_core_partial_caps_the_score_softly_at_65():
     result = widget_result("partial")
-    assert result.score == 65.0  # uncapped: 100 * 7.5 / 9 = 83.3
-    assert "core requirement 'widgets' partial: score capped at 65 (was 83.3)" in result.flags
+    assert result.score == 69.6  # uncapped: 100 * 7.5 / 9 = 83.3; 65 + (83.3 - 65) / 4
+    assert "core requirement 'widgets' partial: score capped at 69.6 (was 83.3)" in result.flags
+
+
+def test_capped_partials_keep_their_order():
+    """Two jobs whose core requirement is partly met don't tie at the cap: the better one stays ahead."""
+    job = JobSpec(title="Acme Widget Role", requirements=[*WIDGET_JOB.requirements,
+                  Requirement(id="sql", description="SQL", kind="nice_to_have")])
+    profile = WIDGET_PROFILE + "\nSkills: SQL"
+    def score(sql):
+        return finalize("c1", "c1.txt", job, profile, CandidateAssessment(summary="s", assessments=[
+            a("widgets", "partial", ["Skills: Widget kernels"]), a("python", "met", ["Skills: Python"]),
+            a("degree", "met", ["B.S. Computer Science"]), a("sql", sql, ["Skills: SQL"] if sql == "met" else [])
+        ])).score
+    assert 65 < score("not_met") < score("met") <= 73.75
 
 
 def test_core_met_is_not_capped():

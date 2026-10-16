@@ -53,7 +53,9 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
 - **Structured outputs everywhere.** Every model call returns a schema-validated object
   (API structured outputs, or constrained decoding locally via [Outlines](https://github.com/dottxt-ai/outlines)).
 - **Scoring:** `score = 100 × Σ(weight × credit) / Σ(weight)`, with must-have = 3, nice-to-have = 1,
-  met = 1, partial = 0.5, not met = 0.
+  met = 1, partial = 0.5, not met = 0. The extractor marks 1–3 core requirements (the job's central
+  skill); a core one not met caps the score at 40, and a core one partly met caps it softly at 65
+  (65 plus a quarter of the rest), so a candidate can't miss the job's point and still score well.
 - **Years of experience are added up in code.** For a requirement that states a year count
   ("3+ years of data engineering"), a separate call shows the model each role's title and work,
   without durations, and asks whether the role's main work is in that field. Code adds up the
