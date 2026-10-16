@@ -186,6 +186,20 @@ def test_capped_partials_keep_their_order():
     assert 65 < score("not_met") < score("met") <= 73.75
 
 
+def test_a_quote_not_found_costs_credit_but_does_not_cap():
+    """The model says the core skill is met but its quote is slightly off: that requirement drops to partial
+    credit and the miss is flagged with the quote, but the score isn't capped as if the skill were missing."""
+    result = finalize("c1", "c1.txt", WIDGET_JOB, WIDGET_PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("widgets", "met", ["Skills: Widget kernel development"]),
+        a("python", "met", ["Skills: Python"]),
+        a("degree", "met", ["B.S. Computer Science"]),
+    ]))
+    assert result.score == round(100 * 7.5 / 9, 1)
+    assert ("'widgets': evidence not found in profile (“Skills: Widget kernel development”); "
+            "downgraded met -> partial") in result.flags
+    assert not any("capped" in f for f in result.flags)
+
+
 def test_core_met_is_not_capped():
     result = widget_result("met")
     assert result.score == 100.0 and result.flags == []

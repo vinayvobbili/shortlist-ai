@@ -16,9 +16,12 @@ The partial cap is soft so that capped jobs keep their order instead of all tyin
 core partial still can't pass 73.75. The cap is recorded in the result's flags.
 
 Evidence that can't be found in the profile is treated as hallucinated: the
-verdict is downgraded one level and the candidate is flagged for review. Entries
-that only echo the requirement or note an absence are set aside (and flagged)
-first, since they claim nothing about the candidate.
+verdict is downgraded one level and the candidate is flagged for review, with the
+quote that wasn't found. Entries that only echo the requirement or note an absence
+are set aside (and flagged) first, since they claim nothing about the candidate.
+The core cap follows the model's own verdict, not the downgraded one: a quote that
+is only slightly off (small models paraphrase) costs that requirement's credit, but
+doesn't cap a candidate who has the job's central skill.
 
 "N+ years of X" requirements are computed in code from role durations; see years.py.
 """
@@ -77,7 +80,7 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
     for a in assessment.assessments:
         by_id.setdefault(a.requirement_id, a)  # keep the first if the model repeats an id
 
-    flags, scored = [], []
+    flags, scored, judged = [], [], {}  # judged: the model's own verdicts, for the core cap
     for req in job.requirements:
         a = by_id.get(req.id)
         if a is None:
@@ -92,12 +95,14 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
                          f"that quote the requirement or note an absence, not the profile")
         unverified = [q for q in a.evidence if not quote_in_profile(q, profile)]
         verified = not unverified
-        verdict = a.verdict
+        verdict = judged[req.id] = a.verdict
         if a.verdict != "not_met" and not a.evidence:
             verified = False
         if not verified and verdict != "not_met":
             verdict = DOWNGRADE[verdict]
-            flags.append(f"'{req.id}': evidence not found in profile; downgraded {a.verdict} -> {verdict}")
+            missing = "no quote given" if not unverified else "; ".join(
+                f"“{q[:80]}{'…' if len(q) > 80 else ''}”" for q in unverified)
+            flags.append(f"'{req.id}': evidence not found in profile ({missing}); downgraded {a.verdict} -> {verdict}")
         scored.append(ScoredRequirement(**{**a.model_dump(), "verdict": verdict},
                                         kind=req.kind, core=req.core, evidence_verified=verified,
                                         unverified_quotes=unverified, ignored_evidence=ignored))
@@ -110,10 +115,11 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
         flags.append(f"missing must-have: {', '.join(unmet)}")
     score = round(100 * earned / total, 1) if total else 0.0
     for r in musts:
-        cap = CORE_CAP.get(r.verdict) if r.core else None
+        verdict = judged[r.requirement_id]
+        cap = CORE_CAP.get(verdict) if r.core else None
         if cap is not None and score > cap:
-            capped = round(cap + (score - cap) * ABOVE_CAP[r.verdict], 1)
-            flags.append(f"core requirement '{r.requirement_id}' {r.verdict.replace('_', ' ')}: "
+            capped = round(cap + (score - cap) * ABOVE_CAP[verdict], 1)
+            flags.append(f"core requirement '{r.requirement_id}' {verdict.replace('_', ' ')}: "
                          f"score capped at {capped:g} (was {score})")
             score = capped
     return CandidateResult(
