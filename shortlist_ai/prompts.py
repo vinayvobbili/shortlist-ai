@@ -41,6 +41,8 @@ Rules:
 - One requirement per distinct qualification; split compound lines ("Python and SQL") into separate requirements.
 - Keep each requirement faithful to the posting; do not add requirements it does not state.
 - Mark a requirement must_have only when the posting says it is required; everything else is nice_to_have.
+- Mark 1-3 requirements core: the job's central technical domain or skills, the ones someone without could not do this job. Never mark a degree, years of experience, a soft skill or a generic one ("software architecture") core.
+- When the listed required qualifications are generic (a degree, years of coding in common languages), still add the domain the overview and responsibilities describe (e.g. "GPU kernel development") as a must_have and mark it core.
 - Leave out anything that is not a job qualification, including any reference to age, gender, race, nationality, religion, disability, health, or family status."""
 
 SCORE_SYSTEM = """You assess a candidate profile against a job's requirements, one requirement at a time.

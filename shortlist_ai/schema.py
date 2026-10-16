@@ -62,6 +62,9 @@ class Requirement(BaseModel):
     description: str = Field(description="One specific, checkable requirement in plain language")
     kind: Literal["must_have", "nice_to_have"] = Field(
         description="must_have only if the posting says required/must/minimum; otherwise nice_to_have")
+    core: bool = Field(default=False, description=(
+        "The role's central technical domain or skill: someone without it cannot do this job. "
+        "At most three per posting; never a degree, years of experience or a soft skill"))
 
 
 class JobSpec(BaseModel):
@@ -110,6 +113,7 @@ class RoleRelevance(BaseModel):
 
 class ScoredRequirement(RequirementAssessment):
     kind: Literal["must_have", "nice_to_have"]
+    core: bool = False
     evidence_verified: bool = Field(description="Every evidence quote was found in the candidate profile")
     unverified_quotes: list[str] = Field(default_factory=list,
                                          description="Evidence quotes not found in the candidate profile")

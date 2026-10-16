@@ -19,7 +19,8 @@ def _evidence_table(result) -> list[str]:
         missing = set(req.unverified_quotes)
         evidence = "<br>".join(f"“{q}”" + (" ⚠️ not found in profile" if q in missing else "")
                                for q in req.evidence) or "—"
-        out.append(f"| `{req.requirement_id}` | {VERDICT_MARK[req.verdict]} | {evidence} |")
+        core = " ★ core" if req.core else ""
+        out.append(f"| `{req.requirement_id}`{core} | {VERDICT_MARK[req.verdict]} | {evidence} |")
     return out
 
 
@@ -31,7 +32,8 @@ def to_markdown(ranking: Ranking, top: int, backend_desc: str) -> str:
            + (f" · {len(ranking.errors)} failed" if ranking.errors else ""), ""]
 
     out += ["## Requirements", "", "| id | type | requirement |", "|---|---|---|"]
-    out += [f"| `{r.id}` | {r.kind.replace('_', '-')} | {r.description} |" for r in job.requirements]
+    out += [f"| `{r.id}` | {r.kind.replace('_', '-')}{' ★ core' if r.core else ''} | {r.description} |"
+            for r in job.requirements]
 
     out += ["", "## Ranking", "", "| # | Candidate | Score | Must-haves | Flags |", "|---|---|---|---|---|"]
     for i, r in enumerate(ranking.results, 1):

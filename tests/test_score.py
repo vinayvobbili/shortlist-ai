@@ -141,3 +141,75 @@ def test_report_marks_only_the_quote_that_failed():
     row = next(line for line in _evidence_table(result) if line.startswith("| `llm`"))
     assert "“Built SOAR playbooks in Python”<br>" in row
     assert "“Fine-tuned GPT-4 for alert triage” ⚠️ not found in profile" in row
+
+
+WIDGET_JOB = JobSpec(title="Senior Widget Engineer", requirements=[
+    Requirement(id="widgets", description="Widget kernel development", kind="must_have", core=True),
+    Requirement(id="python", description="Python scripting", kind="must_have"),
+    Requirement(id="degree", description="Bachelor's degree", kind="must_have"),
+])
+WIDGET_PROFILE = "Skills: Python, Widget kernels\nEducation: B.S. Computer Science, Initech"
+
+
+def widget_result(widgets_verdict, job=WIDGET_JOB):
+    ev = ["Skills: Widget kernels"] if widgets_verdict != "not_met" else []
+    return finalize("c1", "c1.txt", job, WIDGET_PROFILE, CandidateAssessment(summary="s", assessments=[
+        a("widgets", widgets_verdict, ev),
+        a("python", "met", ["Skills: Python"]),
+        a("degree", "met", ["B.S. Computer Science"]),
+    ]))
+
+
+def test_core_not_met_caps_the_score_at_40_and_says_so():
+    result = widget_result("not_met")
+    assert result.score == 40.0  # uncapped: 100 * 6 / 9 = 66.7
+    assert "core requirement 'widgets' not met: score capped at 40 (was 66.7)" in result.flags
+    assert [r.core for r in result.requirements] == [True, False, False]
+
+
+def test_core_partial_caps_the_score_at_65():
+    result = widget_result("partial")
+    assert result.score == 65.0  # uncapped: 100 * 7.5 / 9 = 83.3
+    assert "core requirement 'widgets' partial: score capped at 65 (was 83.3)" in result.flags
+
+
+def test_core_met_is_not_capped():
+    result = widget_result("met")
+    assert result.score == 100.0 and result.flags == []
+
+
+def test_a_gap_that_is_not_core_is_not_capped():
+    job = JobSpec(title="Senior Widget Engineer", requirements=[
+        r.model_copy(update={"core": False}) for r in WIDGET_JOB.requirements])
+    result = widget_result("not_met", job)
+    assert result.score == round(100 * 6 / 9, 1)
+    assert not any("capped" in f for f in result.flags)
+
+
+def test_a_score_already_under_the_cap_is_left_alone():
+    job = JobSpec(title="Globex Widget Role", requirements=[
+        Requirement(id="widgets", description="Widgets", kind="must_have", core=True),
+        Requirement(id="a", description="A", kind="must_have"),
+        Requirement(id="b", description="B", kind="must_have"),
+    ])
+    result = finalize("c1", "c1.txt", job, "Skills: Python", CandidateAssessment(summary="s", assessments=[
+        a("widgets", "not_met"), a("a", "not_met"), a("b", "met", ["Skills: Python"])]))
+    assert result.score == round(100 / 3, 1)
+    assert not any("capped" in f for f in result.flags)
+
+
+def test_a_job_spec_saved_without_core_still_loads():
+    old = {"title": "Widget Engineer", "requirements": [
+        {"id": "python", "description": "Python", "kind": "must_have"}]}
+    job = JobSpec.model_validate(old)
+    assert job.requirements[0].core is False
+
+
+def test_the_job_prompt_asks_for_core_requirements():
+    from shortlist_ai.prompts import JOB_SYSTEM
+    assert "core" in JOB_SYSTEM and "overview and responsibilities" in JOB_SYSTEM
+
+
+def test_report_marks_core_requirements():
+    from shortlist_ai.report import _evidence_table
+    assert "`widgets` ★ core" in "\n".join(_evidence_table(widget_result("met")))

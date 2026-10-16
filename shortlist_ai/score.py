@@ -7,6 +7,13 @@ here, deterministically, so scores are auditable and weights are adjustable:
   score = 100 * sum(weight * credit) / sum(weight)
   weight: must_have 3, nice_to_have 1      credit: met 1, partial 0.5, not_met 0
 
+A core must-have (the role's central skill, marked by the extractor) caps the score when it isn't
+met, because the weights alone let a candidate miss the job's whole point and still score well:
+
+  core not_met: score at most 40      core partial: score at most 65
+
+The cap is recorded in the result's flags.
+
 Evidence that can't be found in the profile is treated as hallucinated: the
 verdict is downgraded one level and the candidate is flagged for review. Entries
 that only echo the requirement or note an absence are set aside (and flagged)
@@ -29,6 +36,7 @@ from .years import assess_years, min_years
 
 WEIGHTS = {"must_have": 3.0, "nice_to_have": 1.0}
 CREDIT = {"met": 1.0, "partial": 0.5, "not_met": 0.0}
+CORE_CAP = {"not_met": 40.0, "partial": 65.0}  # highest score allowed while a core must-have has this verdict
 DOWNGRADE = {"met": "partial", "partial": "not_met", "not_met": "not_met"}
 
 
@@ -89,7 +97,7 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
             verdict = DOWNGRADE[verdict]
             flags.append(f"'{req.id}': evidence not found in profile; downgraded {a.verdict} -> {verdict}")
         scored.append(ScoredRequirement(**{**a.model_dump(), "verdict": verdict},
-                                        kind=req.kind, evidence_verified=verified,
+                                        kind=req.kind, core=req.core, evidence_verified=verified,
                                         unverified_quotes=unverified, ignored_evidence=ignored))
 
     total = sum(WEIGHTS[r.kind] for r in scored)
@@ -98,10 +106,17 @@ def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,
     unmet = [r.requirement_id for r in musts if r.verdict == "not_met"]
     if unmet:
         flags.append(f"missing must-have: {', '.join(unmet)}")
+    score = round(100 * earned / total, 1) if total else 0.0
+    for r in musts:
+        cap = CORE_CAP.get(r.verdict) if r.core else None
+        if cap is not None and score > cap:
+            flags.append(f"core requirement '{r.requirement_id}' {r.verdict.replace('_', ' ')}: "
+                         f"score capped at {cap:.0f} (was {score})")
+            score = cap
     return CandidateResult(
         candidate_id=candidate_id,
         source_file=source_file,
-        score=round(100 * earned / total, 1) if total else 0.0,
+        score=score,
         must_haves_met=sum(1 for r in musts if r.verdict == "met"),
         must_haves_total=len(musts),
         requirements=scored,
