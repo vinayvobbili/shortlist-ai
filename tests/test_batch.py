@@ -131,6 +131,19 @@ def test_a_call_the_batch_did_not_answer_fails_and_is_retried_next_run(tmp_path,
     assert retry.run(lambda: ask(retry, "bad")) == "fine now" and len(more.sent) == 1
 
 
+def test_a_jobs_independent_calls_go_in_one_round(tmp_path):
+    """The score and each years check don't need one another, so the first to wait doesn't hold back the rest."""
+    from shortlist_ai.score import _every
+
+    b, _ = backend(tmp_path, echo)
+    with pytest.raises(Deferred):
+        _every([lambda t=t: ask(b, t) for t in ("score", "years 1", "years 2")])
+    assert len(b.pending) == 3
+    with pytest.raises(ValueError):  # any other error stops at once
+        _every([lambda: (_ for _ in ()).throw(ValueError("down")), lambda: ask(b, "never asked")])
+    assert len(b.pending) == 3
+
+
 def test_a_round_that_queues_nothing_returns_at_once(tmp_path):
     b, batches = backend(tmp_path, echo)
     assert b.run(lambda: 42) == 42 and batches.sent == {}

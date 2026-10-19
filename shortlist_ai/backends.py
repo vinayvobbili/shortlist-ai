@@ -35,6 +35,10 @@ class BackendError(RuntimeError):
     pass
 
 
+class Deferred(Exception):
+    """A model call queued for the next batch (see batch.py): it has no answer yet."""
+
+
 class Backend(Protocol):
     name: str
     model: str

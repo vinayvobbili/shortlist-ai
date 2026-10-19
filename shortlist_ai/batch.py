@@ -20,14 +20,12 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from .backends import CLAUDE_MODEL, BackendError, Usage, _say
+from .backends import CLAUDE_MODEL, BackendError, Deferred, Usage, _say
+
+__all__ = ["BatchBackend", "Deferred"]
 
 T = TypeVar("T", bound=BaseModel)
 R = TypeVar("R")
-
-
-class Deferred(Exception):
-    """A model call queued for the next batch: it has no answer yet."""
 
 
 class BatchBackend:
