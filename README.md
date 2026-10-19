@@ -218,6 +218,25 @@ compare scores only between runs with the same prompts, and rerun the [evaluatio
 before trusting one. Extractions are cached by prompt text, so an edited extraction prompt extracts
 afresh.
 
+## Batch runs at half price
+
+For a big run nobody is waiting on, `BatchBackend` sends Claude's calls through the Message Batches API: half
+the price, with results within 24 hours (usually minutes). The pipeline's calls depend on each other (a job's
+requirements before its score), so `run` goes in rounds: each call without a stored answer is queued and fails
+for that round, the round's calls go out as one batch, and the work runs again once it ends, until a round
+queues nothing (about three rounds for scoring). Answers and the batches still out are kept in `store`, so a run
+stopped mid-batch collects that batch next time instead of paying again.
+
+```python
+from shortlist_ai.batch import BatchBackend
+
+backend = BatchBackend(store=Path("~/.cache/shortlist-ai/batch").expanduser(), model="claude-sonnet-5-5")
+matches = backend.run(lambda: match_jobs(resume, jobs, backend, cache=cache))
+```
+
+Its name is `claude`, so it shares the extraction cache with `ClaudeBackend`: the same request means the same
+answer either way.
+
 ## Evaluation
 
 `eval/` holds 18 **synthetic** candidates in mixed formats (DOCX, text PDF, two-column PDF,
