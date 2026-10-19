@@ -30,7 +30,7 @@ import random
 import re
 from collections.abc import Mapping
 
-from .backends import Backend, Deferred
+from .backends import Backend
 from .blind import Role
 from .evidence import _norm, quote_in_profile
 from .prompts import SCORE_SYSTEM as SCORE_SYSTEM  # the prompts live in prompts.py; still importable from here
@@ -140,25 +140,9 @@ def score_candidate(candidate_id: str, source_file: str, job: JobSpec, profile: 
     """With `roles` (the profile's roles), "N+ years of X" verdicts are computed in code.
     prompts: {name: text} in place of the defaults (see prompts.py)."""
     prompts = resolve(prompts)
-    years = ({r.id: (r, n) for r in job.requirements if (n := min_years(r.description)) is not None}
-             if roles is not None else {})
-    assessment, *computed = _every([
-        lambda: backend.structured(prompts["score_system"], build_prompt(job, profile, prompts), CandidateAssessment),
-        *(lambda r=r, n=n: assess_years(r, n, roles, backend, prompts) for r, n in years.values())])
+    assessment = backend.structured(prompts["score_system"], build_prompt(job, profile, prompts), CandidateAssessment)
     if roles is not None:
+        years = {r.id: (r, n) for r in job.requirements if (n := min_years(r.description)) is not None}
+        computed = [assess_years(r, n, roles, backend, prompts) for r, n in years.values()]
         assessment.assessments = [a for a in assessment.assessments if a.requirement_id not in years] + computed
     return finalize(candidate_id, source_file, job, profile, assessment)
-
-
-def _every(calls: list) -> list:
-    """Each call's result. The calls don't depend on each other, so one waiting for a batch (Deferred) doesn't
-    stop the rest: a batch round queues them all, rather than one round each. Any other error stops at once."""
-    results, waiting = [], None
-    for call in calls:
-        try:
-            results.append(call())
-        except Deferred as e:
-            waiting = waiting or e
-    if waiting:
-        raise waiting
-    return results

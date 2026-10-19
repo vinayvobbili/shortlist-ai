@@ -5,7 +5,8 @@ The pipeline makes its model calls one after another (a job's requirements befor
 any years check), so a batch run goes in rounds. BatchBackend.run(work) calls work(); each model call without a
 stored answer is queued, and fails for that round with Deferred (the pipeline records it as that job's error).
 The queued calls go out as one batch, and when it ends work() runs again, its earlier calls now answered from
-disk. It stops when a round queues nothing; scoring a set of jobs takes about three rounds.
+disk. It stops when a round queues nothing. Scoring a set of jobs takes a few rounds: requirements, then the
+score, then one per "N+ years" check (score.py makes those in turn). Rounds cost waiting, not money.
 
 Answers are kept on disk by request, and so is every batch still out, so a run stopped while one is processing
 collects it next time instead of paying for the same calls twice."""

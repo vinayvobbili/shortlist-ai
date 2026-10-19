@@ -224,7 +224,7 @@ For a big run nobody is waiting on, `BatchBackend` sends Claude's calls through 
 the price, with results within 24 hours (usually minutes). The pipeline's calls depend on each other (a job's
 requirements before its score), so `run` goes in rounds: each call without a stored answer is queued and fails
 for that round, the round's calls go out as one batch, and the work runs again once it ends, until a round
-queues nothing (about three rounds for scoring). Answers and the batches still out are kept in `store`, so a run
+queues nothing (a few rounds for scoring: requirements, the score, then each "N+ years" check). Answers and the batches still out are kept in `store`, so a run
 stopped mid-batch collects that batch next time instead of paying again.
 
 ```python
