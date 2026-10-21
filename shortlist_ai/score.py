@@ -34,7 +34,7 @@ from .backends import Backend
 from .blind import Role
 from .evidence import _norm, quote_in_profile
 from .prompts import SCORE_SYSTEM as SCORE_SYSTEM  # the prompts live in prompts.py; still importable from here
-from .prompts import resolve
+from .prompts import request_blocks, resolve
 from .schema import CandidateAssessment, CandidateResult, JobSpec, RequirementAssessment, ScoredRequirement
 from .years import assess_years, min_years
 
@@ -69,8 +69,8 @@ def shuffle_requirements(job: JobSpec, seed: int) -> JobSpec:
 
 def build_prompt(job: JobSpec, profile: str, prompts: Mapping[str, str] | None = None) -> list[dict]:
     reqs = "\n".join(f"- id={r.id} [{r.kind}]: {r.description}" for r in job.requirements)
-    text = resolve(prompts)["score_request"].format(title=job.title, requirements=reqs, profile=profile)
-    return [{"type": "text", "text": text}]
+    return request_blocks(resolve(prompts)["score_request"], "profile", title=job.title, requirements=reqs,
+                          profile=profile)
 
 
 def finalize(candidate_id: str, source_file: str, job: JobSpec, profile: str,

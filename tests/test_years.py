@@ -4,6 +4,7 @@ from datetime import date
 import pytest
 
 from shortlist_ai.blind import blind_profile, blind_roles
+from shortlist_ai.prompts import request_text
 from shortlist_ai.schema import (
     CandidateAssessment,
     Experience,
@@ -58,7 +59,7 @@ class RolesBackend:
     def structured(self, system, content, output_type):
         self.calls.append(output_type.__name__)
         if output_type is RoleRelevance:
-            listed = listed_roles(content[0]["text"])
+            listed = listed_roles(request_text(content))
 
             def judged(i, heading, work):
                 if i not in self.main:

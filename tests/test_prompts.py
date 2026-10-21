@@ -4,7 +4,7 @@ from shortlist_ai import prompts as P
 from shortlist_ai.blind import Role
 from shortlist_ai.extract import Cache, extract_job
 from shortlist_ai.pipeline import match_jobs
-from shortlist_ai.prompts import PROMPTS, PromptError, resolve
+from shortlist_ai.prompts import PROMPTS, PromptError, request_text, resolve
 from shortlist_ai.schema import (
     CandidateAssessment,
     JobSpec,
@@ -33,7 +33,7 @@ class RecordingBackend:
         self.calls: list[tuple[str, str, str]] = []  # (output type, system, request text)
 
     def structured(self, system, content, output_type):
-        text = content[0]["text"]
+        text = request_text(content)
         self.calls.append((output_type.__name__, system, text))
         if output_type is Resume:
             return Resume(full_name="Dana Acme", email=None, phone=None, location=None, links=[], summary=None,
@@ -60,15 +60,26 @@ def test_every_prompt_has_a_name_an_about_and_its_default():
     assert PROMPTS["score_request"].placeholders == ("title", "requirements", "profile")
 
 
-def test_default_requests_are_unchanged():
-    # Byte for byte what the model saw before prompts could be edited: evals and caches stay comparable.
-    assert build_prompt(JOB, "Skills: ROS")[0]["text"] == (
-        "Role: Robotics Engineer\n\nRequirements:\n- id=ros [must_have]: ROS\n"
-        "- id=years [nice_to_have]: 3+ years of robotics\n\n<profile>\nSkills: ROS\n</profile>\n\n"
-        "Assess every requirement.")
-    assert roles_prompt(JOB.requirements[1], ROLES)[0]["text"] == (
-        "Requirement: 3+ years of robotics\n\nRoles:\n1. Engineer at Acme Robotics\n   * Built arm controllers"
-        "\n\nJudge every role.")
+def test_default_requests_put_what_every_call_shares_first_and_cache_it():
+    # The profile (the roles, for years) is the same in every call for one resume: its own block, cached.
+    cached = {"type": "ephemeral"}
+    assert build_prompt(JOB, "Skills: ROS") == [
+        {"type": "text", "text": "<profile>\nSkills: ROS\n</profile>", "cache_control": cached},
+        {"type": "text", "text": "Role: Robotics Engineer\n\nRequirements:\n- id=ros [must_have]: ROS\n"
+                                 "- id=years [nice_to_have]: 3+ years of robotics\n\nAssess every requirement."}]
+    assert roles_prompt(JOB.requirements[1], ROLES) == [
+        {"type": "text", "text": "Roles:\n1. Engineer at Acme Robotics\n   * Built arm controllers",
+         "cache_control": cached},
+        {"type": "text", "text": "Requirement: 3+ years of robotics\n\nJudge every role."}]
+    # Joined as the local backend joins them, it's the template filled in as one text.
+    assert request_text(build_prompt(JOB, "Skills: ROS")) == P.SCORE_REQUEST.format(
+        profile="Skills: ROS", title="Robotics Engineer",
+        requirements="- id=ros [must_have]: ROS\n- id=years [nice_to_have]: 3+ years of robotics")
+
+
+def test_an_edited_template_that_does_not_lead_with_the_profile_is_one_block():
+    content = build_prompt(JOB, "Skills: ROS", {"score_request": "Job {title}\n\n{requirements}\n\n{profile}"})
+    assert len(content) == 1 and "cache_control" not in content[0]
 
 
 def test_old_constant_names_still_import():

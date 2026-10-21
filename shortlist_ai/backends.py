@@ -22,6 +22,8 @@ from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
 
+from .prompts import request_text
+
 T = TypeVar("T", bound=BaseModel)
 
 CLAUDE_MODEL = "claude-opus-5"
@@ -246,7 +248,7 @@ class LocalBackend:
     def structured(self, system: str, content: list[dict], output_type: type[T]) -> T:
         from outlines.inputs import Chat
 
-        text = "\n\n".join(block["text"] for block in content if block["type"] == "text")
+        text = request_text(content)
         if not text.strip():
             raise BackendError("The local backend needs text; this document has none (scanned PDF?).")
         # Small models follow field descriptions better when they can see them;

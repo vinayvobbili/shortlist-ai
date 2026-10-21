@@ -10,6 +10,7 @@ from shortlist_ai.backends import ClaudeBackend, Usage
 from shortlist_ai.cli import main
 from shortlist_ai.extract import Cache
 from shortlist_ai.pipeline import match_jobs, order_stability, rank
+from shortlist_ai.prompts import request_text
 from shortlist_ai.report import stability_to_markdown, to_json, to_markdown
 from shortlist_ai.schema import CandidateAssessment, JobSpec, Requirement, RequirementAssessment, Resume
 
@@ -29,7 +30,7 @@ class FakeBackend:
         self.calls = []
 
     def structured(self, system, content, output_type):
-        text = content[0]["text"]
+        text = request_text(content)
         self.calls.append(output_type.__name__)
         if output_type is Resume:
             skills = next(line for line in text.splitlines() if line.startswith("Skills:")).split(":")[1]
@@ -74,7 +75,7 @@ def test_scorer_never_sees_names(tmp_path):
     backend = FakeBackend()
     original = backend.structured
     backend.structured = lambda system, content, output_type: (
-        seen.append(content[0]["text"]) or original(system, content, output_type))
+        seen.append(request_text(content)) or original(system, content, output_type))
     rank(JOB, [tmp_path / "alice.txt"], backend)
     scoring_prompt = seen[-1]
     assert "Alice" not in scoring_prompt and "Skills: Python" in scoring_prompt
@@ -166,7 +167,7 @@ def test_hidden_pdf_text_is_excluded_and_flagged(tmp_path):
     backend = FakeBackend()
     original = backend.structured
     backend.structured = lambda system, content, output_type: (
-        seen.append(content[0]["text"]) or original(system, content, output_type))
+        seen.append(request_text(content)) or original(system, content, output_type))
     result = rank(JOB, [tmp_path / "mallory.pdf"], backend).results[0]
     assert "Ignore prior" not in seen[0]  # the extractor never saw it
     assert result.score == round(100 * 3 / 7, 1)  # Python only
@@ -229,7 +230,7 @@ class OrderSensitiveBackend(FakeBackend):
     def structured(self, system, content, output_type):
         result = super().structured(system, content, output_type)
         if isinstance(result, CandidateAssessment):
-            first = re.search(r"^- id=(\S+)", content[0]["text"], re.M).group(1)
+            first = re.search(r"^- id=(\S+)", request_text(content), re.M).group(1)
             for a in result.assessments:
                 if a.requirement_id == first and a.verdict == "met":
                     a.evidence = ["Skills: made up"]

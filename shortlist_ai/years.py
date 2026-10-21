@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from .backends import Backend
 from .blind import Role, format_duration
 from .evidence import quote_in_profile
-from .prompts import YEARS_SYSTEM, resolve
+from .prompts import YEARS_SYSTEM, request_blocks, resolve
 from .schema import Requirement, RequirementAssessment, RoleRelevance
 
 _YEARS = re.compile(r"\b(\d+(?:\.\d+)?)\s*(?:\+|or more)?\s*(?:(?:-|–|to)\s*\d+\s*)?(?:years?|yrs?)\b", re.I)
@@ -38,8 +38,8 @@ def roles_prompt(requirement: Requirement, roles: list[Role],
                  prompts: Mapping[str, str] | None = None) -> list[dict]:
     listing = "\n".join(f"{i}. {r.heading}" + "".join(f"\n   * {h}" for h in r.highlights)
                         for i, r in enumerate(roles, 1))
-    text = resolve(prompts)["years_request"].format(requirement=requirement.description, roles=listing)
-    return [{"type": "text", "text": text}]
+    return request_blocks(resolve(prompts)["years_request"], "roles", requirement=requirement.description,
+                          roles=listing)
 
 
 def role_text(role: Role) -> str:

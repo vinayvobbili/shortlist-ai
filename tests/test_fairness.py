@@ -1,5 +1,6 @@
 from shortlist_ai.fairness import NAME_VARIANTS, SensitivityReport, leak_check, make_variant, measure_sensitivity
 from shortlist_ai.pipeline import profile_for
+from shortlist_ai.prompts import request_text
 from shortlist_ai.schema import CandidateAssessment, JobSpec, Requirement, RequirementAssessment
 
 
@@ -38,7 +39,7 @@ class NameEchoBackend:
         self.prompts = []
 
     def structured(self, system, content, output_type):
-        text = content[0]["text"]
+        text = request_text(content)
         self.prompts.append(text)
         verdict = "met" if "Name: J" in text else "not_met"
         return CandidateAssessment(summary="", assessments=[RequirementAssessment(
@@ -54,5 +55,5 @@ def test_sensitivity_names_differ_only_by_name_line(resume):
     rep = measure_sensitivity("c1", resume, job, backend)
     assert rep.scores_by_name["Jamal Jackson"] == 100 and rep.scores_by_name["Emily Walsh"] == 0
     assert len(rep.noise_scores) == len(NAME_VARIANTS)  # same sample size as the names
-    profiles = {t.split("<profile>")[1].split("\n", 2)[2] for t in backend.prompts}
-    assert len(profiles) == 1  # everything after the name line is identical
+    profiles = {t.split("<profile>")[1].split("</profile>")[0].split("\n", 2)[2] for t in backend.prompts}
+    assert len(profiles) == 1  # everything in the profile after the name line is identical
