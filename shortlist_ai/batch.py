@@ -21,7 +21,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from .backends import CLAUDE_MODEL, BackendError, Deferred, Usage, _say
+from .backends import CLAUDE_MODEL, BackendError, Deferred, Usage, _say, cached_system
 
 __all__ = ["BatchBackend", "Deferred"]
 
@@ -101,8 +101,11 @@ class BatchBackend:
         waiting = {batch for batch, keys in out.items() if keys & pending.keys()}
         new = {k: p for k, p in pending.items() if not any(k in keys for keys in out.values())}
         if new:
+            # The system prompt is marked for caching only here, so request keys (and the answers kept by them)
+            # stay what they were before caching.
             batch = self.client.messages.batches.create(
-                requests=[{"custom_id": k, "params": p} for k, p in new.items()])
+                requests=[{"custom_id": k, "params": {**p, "system": cached_system(p["system"])}}
+                          for k, p in new.items()])
             self._batches.mkdir(parents=True, exist_ok=True)
             (self._batches / f"{batch.id}.json").write_text(json.dumps(sorted(new)))
             self.notify(f"batch {batch.id}: sent {len(new)} request{'s' * (len(new) != 1)}")
@@ -135,7 +138,7 @@ class BatchBackend:
                 why = "Claude declined the request" if message.stop_reason == "refusal" else "Output truncated"
                 self.failed[key] = f"{why} (batch {batch_id})"
                 continue
-            self.usage.add(message.usage.input_tokens, message.usage.output_tokens)
+            self.usage.add_reply(message.usage)
             text = "".join(block.text for block in message.content if block.type == "text")
             (self._answers / f"{key}.json").write_text(json.dumps({"text": text}))
         (self._batches / f"{batch_id}.json").unlink(missing_ok=True)

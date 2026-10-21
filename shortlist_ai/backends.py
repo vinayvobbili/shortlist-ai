@@ -29,6 +29,15 @@ LOCAL_MODEL = "mlx-community/Qwen3.5-9B-MLX-4bit"
 
 # USD per million tokens (input, output), for cost reporting.
 PRICES = {CLAUDE_MODEL: (5.00, 25.00)}
+# Prompt-cache writes and reads, as multiples of the input price (5-minute cache).
+CACHE_WRITE, CACHE_READ = 1.25, 0.10
+
+
+def cached_system(system: str) -> list[dict]:
+    """The system prompt as one block marked for prompt caching: every call of a kind (job requirements, score,
+    years check) shares it, so calls within 5 minutes of each other read it from the cache. A prompt shorter than
+    the model's minimum just isn't cached. Caching doesn't change the answer, so it isn't part of any cache key."""
+    return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
 
 
 class BackendError(RuntimeError):
@@ -53,18 +62,29 @@ class Usage:
     def __init__(self):
         self.input_tokens = 0
         self.output_tokens = 0
+        self.cache_write_tokens = 0
+        self.cache_read_tokens = 0
         self.calls = 0
 
-    def add(self, input_tokens: int, output_tokens: int):
+    def add(self, input_tokens: int, output_tokens: int, cache_write_tokens: int = 0, cache_read_tokens: int = 0):
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
+        self.cache_write_tokens += cache_write_tokens
+        self.cache_read_tokens += cache_read_tokens
         self.calls += 1
+
+    def add_reply(self, usage):
+        """A reply's usage (input_tokens leaves out what was written to or read from the prompt cache)."""
+        self.add(usage.input_tokens, usage.output_tokens,
+                 getattr(usage, "cache_creation_input_tokens", None) or 0,
+                 getattr(usage, "cache_read_input_tokens", None) or 0)
 
     def cost_usd(self, model: str) -> float:
         if model not in PRICES:
             return 0.0
         price_in, price_out = PRICES[model]
-        return (self.input_tokens * price_in + self.output_tokens * price_out) / 1e6
+        cached = self.cache_write_tokens * CACHE_WRITE + self.cache_read_tokens * CACHE_READ
+        return ((self.input_tokens + cached) * price_in + self.output_tokens * price_out) / 1e6
 
 
 class ClaudeBackend:
@@ -83,7 +103,7 @@ class ClaudeBackend:
         response = self.client.beta.messages.parse(
             model=self.model,
             max_tokens=16000,
-            system=system,
+            system=cached_system(system),
             messages=[{"role": "user", "content": content}],
             output_format=output_type,
             thinking={"type": "adaptive"},
@@ -97,7 +117,7 @@ class ClaudeBackend:
             raise BackendError(f"Claude declined the request (request {response._request_id})")
         if response.stop_reason == "max_tokens":
             raise BackendError(f"Output truncated at max_tokens (request {response._request_id})")
-        self.usage.add(response.usage.input_tokens, response.usage.output_tokens)
+        self.usage.add_reply(response.usage)
         return response.parsed_output
 
 

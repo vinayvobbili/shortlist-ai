@@ -86,6 +86,18 @@ def test_dependent_calls_go_out_in_rounds_and_answers_are_kept(tmp_path):
     assert again.run(work) == ["re: re: a", "re: re: b"] and more.sent == {}
 
 
+def test_the_system_prompt_is_cached_but_request_keys_stay_as_before(tmp_path):
+    b, batches = backend(tmp_path, echo)
+    with pytest.raises(Deferred):
+        ask(b, "a")
+    (key, params), = b.pending.items()
+    assert params["system"] == "sys"  # what the key is made from: answers kept before caching still match
+    b.run(lambda: ask(b, "a"))
+    sent = batches.sent["msgbatch_1"][0]
+    assert sent["custom_id"] == key
+    assert sent["params"]["system"] == [{"type": "text", "text": "sys", "cache_control": {"type": "ephemeral"}}]
+
+
 def test_a_call_without_an_answer_is_deferred(tmp_path):
     b, _ = backend(tmp_path, echo)
     with pytest.raises(Deferred):

@@ -1,10 +1,12 @@
 import json
 import re
+from types import SimpleNamespace as NS
 
 import anthropic
 import httpx2
+import pytest
 
-from shortlist_ai.backends import ClaudeBackend
+from shortlist_ai.backends import ClaudeBackend, Usage
 from shortlist_ai.cli import main
 from shortlist_ai.extract import Cache
 from shortlist_ai.pipeline import match_jobs, order_stability, rank
@@ -129,7 +131,17 @@ def test_claude_request_shape():
     assert body["model"] == "claude-opus-5" and body["fallbacks"] == "default"
     assert body["output_config"]["format"]["type"] == "json_schema"
     assert "server-side-fallback-2026-07-01" in captured["beta"]
+    assert body["system"] == [{"type": "text", "text": "sys", "cache_control": {"type": "ephemeral"}}]
     assert backend.usage.calls == 1 and backend.usage.cost_usd("claude-opus-5") > 0
+
+
+def test_cost_counts_prompt_cache_writes_and_reads():
+    usage = Usage()
+    usage.add_reply(NS(input_tokens=1_000_000, output_tokens=0,
+                       cache_creation_input_tokens=1_000_000, cache_read_input_tokens=1_000_000))
+    assert usage.cost_usd("claude-opus-5") == pytest.approx(5.00 + 5.00 * 1.25 + 5.00 * 0.10)
+    usage.add_reply(NS(input_tokens=10, output_tokens=5))  # a reply without cache fields counts as no cache use
+    assert usage.cache_read_tokens == 1_000_000 and usage.calls == 2
 
 
 def test_cli_requires_a_job(tmp_path, capsys):
