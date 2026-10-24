@@ -359,16 +359,26 @@ class AgyBackend:
         schema = json.dumps(output_type.model_json_schema())
         prompt = (f"{system}\n\nAnswer with one JSON object matching this schema, and nothing else:\n{schema}"
                   f"\n\n---\n\n{text}")
-        reply = self._run(prompt, schema)
-        raw = str(reply.get("response") or "").strip()
-        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)  # a model may fence its JSON anyway
-        try:
-            result = output_type.model_validate_json(raw)
-        except ValueError as e:
-            raise BackendError(f"agy's answer didn't validate: {e}") from e
-        used = reply.get("usage") or {}
-        self.usage.add(int(used.get("input_tokens") or 0), int(used.get("output_tokens") or 0))
-        return result
+        for attempt in (1, 2):
+            reply = self._run(prompt, schema)
+            raw = str(reply.get("response") or "").strip()
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)  # a model may fence its JSON anyway
+            try:
+                result = output_type.model_validate_json(raw)
+            except ValueError as e:
+                raise BackendError(f"agy's answer didn't validate: {e}") from e
+            used = reply.get("usage") or {}
+            self.usage.add(int(used.get("input_tokens") or 0), int(used.get("output_tokens") or 0))
+            if attempt == 2 or not _nothing_listed(result):
+                return result
+        return result  # pragma: no cover
+
+
+def _nothing_listed(result: BaseModel) -> bool:
+    """Every list in the answer is empty (agy now and then answers a long posting with `{"requirements": []}`):
+    worth one more try before the answer is believed and cached."""
+    lists = [v for v in result.__dict__.values() if isinstance(v, list)]
+    return bool(lists) and not any(lists)
 
 
 def get_backend(name: str, model: str | None = None) -> Backend:

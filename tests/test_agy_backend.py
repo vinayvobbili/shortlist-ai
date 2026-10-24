@@ -79,3 +79,13 @@ def test_no_text_is_an_error_and_get_backend_knows_agy():
         backends.AgyBackend().structured("s", [{"type": "document"}], Out)
     assert backends.get_backend("agy", "gemini-3.8-flash-medium").model == "gemini-3.8-flash-medium"
     assert backends.get_backend("agy").model == backends.AGY_MODEL
+
+
+def test_an_answer_with_every_list_empty_gets_one_more_try(monkeypatch, run):
+    replies = iter([reply('{"items": []}'), reply('{"items": ["a"]}')])
+    calls = run(reply())
+    monkeypatch.setattr(backends.subprocess, "run", lambda args, **kw: (
+        calls.append(args), SimpleNamespace(stdout=next(replies), returncode=0, stderr=""))[1])
+    assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["a"]
+    run(reply('{"items": []}'))  # still empty the second time: believed
+    assert backends.AgyBackend().structured("s", CONTENT, Out).items == []
