@@ -89,3 +89,8 @@ def test_an_answer_with_every_list_empty_gets_one_more_try(monkeypatch, run):
     assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["a"]
     run(reply('{"items": []}'))  # still empty the second time: believed
     assert backends.AgyBackend().structured("s", CONTENT, Out).items == []
+
+
+def test_text_after_the_json_is_ignored(run):
+    run(reply('{"items": ["x"]}\nHope this helps! {not json}'))
+    assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["x"]

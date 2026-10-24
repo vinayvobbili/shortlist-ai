@@ -362,7 +362,7 @@ class AgyBackend:
         for attempt in (1, 2):
             reply = self._run(prompt, schema)
             raw = str(reply.get("response") or "").strip()
-            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)  # a model may fence its JSON anyway
+            raw = _first_json_object(raw)
             try:
                 result = output_type.model_validate_json(raw)
             except ValueError as e:
@@ -372,6 +372,18 @@ class AgyBackend:
             if attempt == 2 or not _nothing_listed(result):
                 return result
         return result  # pragma: no cover
+
+
+def _first_json_object(raw: str) -> str:
+    """The first JSON object in agy's answer: a model may fence it, or add a line of text after it."""
+    start = raw.find("{")
+    if start < 0:
+        return raw
+    try:
+        _, end = json.JSONDecoder().raw_decode(raw, start)
+    except ValueError:
+        return raw
+    return raw[start:end]
 
 
 def _nothing_listed(result: BaseModel) -> bool:
