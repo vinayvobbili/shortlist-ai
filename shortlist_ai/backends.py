@@ -6,12 +6,18 @@ instance of a Pydantic model.
 - LocalBackend: an MLX model on Apple Silicon with schema-constrained decoding
   (Outlines). Nothing leaves the machine. Text only. Processes using it take turns on the
   GPU (ModelLock), so two programs scoring at once don't run each other out of memory.
+- AgyBackend: Google's Antigravity CLI (`agy`) on your own subscription login, no API key. Text only.
+  Each call starts the CLI in an empty temporary directory, sandboxed, so its tools find nothing.
 """
 
 import fcntl
 import json
 import os
+import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import zlib
 from collections.abc import Callable
@@ -28,6 +34,7 @@ T = TypeVar("T", bound=BaseModel)
 
 CLAUDE_MODEL = "claude-opus-5"
 LOCAL_MODEL = "mlx-community/Qwen3.5-9B-MLX-4bit"
+AGY_MODEL = "claude-sonnet-5-5-medium"  # `agy models` lists the ids
 
 # USD per million tokens (input, output), for cost reporting.
 PRICES = {CLAUDE_MODEL: (5.00, 25.00)}
@@ -297,9 +304,78 @@ def _load_local_generator(model_name: str):
     return outlines.from_mlxlm(model, tokenizer)
 
 
+QUOTA_WORDS = re.compile(r"quota|rate.?limit|usage limit|limit (reached|exceeded)|exhausted|too many requests|\b429\b",
+                         re.IGNORECASE)
+
+
+class AgyBackend:
+    """Antigravity CLI: `agy -p PROMPT --output-format json --json-schema SCHEMA` run in an empty temporary
+    directory with --sandbox. agy has no system-prompt option, so the system text opens the prompt. A failed
+    call (agy missing, a timeout, a status other than SUCCESS, quota used up, an answer that isn't the schema)
+    raises BackendError, so a caller with another backend to try can move on."""
+    name = "agy"
+    reads_documents = False
+    executable = "agy"
+
+    def __init__(self, model: str = AGY_MODEL, timeout: float = 180.0):
+        self.model = model
+        self.timeout = timeout  # seconds for one call; agy itself is told a little less
+        self.usage = Usage()
+
+    def _run(self, prompt: str, schema: str) -> dict:
+        exe = shutil.which(self.executable)
+        if not exe:
+            raise BackendError("agy (Antigravity CLI) isn't installed or isn't on PATH")
+        args = [exe, "-p", prompt, "--output-format", "json", "--model", self.model, "--sandbox",
+                "--disable-slash-commands", "--json-schema", schema,
+                "--print-timeout", f"{max(int(self.timeout) - 10, 10)}s"]
+        with tempfile.TemporaryDirectory(prefix="agy-") as empty:
+            try:
+                done = subprocess.run(args, cwd=empty, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                      timeout=self.timeout)
+            except subprocess.TimeoutExpired:
+                raise BackendError(f"agy didn't answer within {self.timeout:g}s") from None
+            except OSError as e:
+                raise BackendError(f"agy couldn't start: {e}") from e
+        out = (done.stdout or "").strip()
+        try:
+            reply = json.loads(out)
+        except ValueError:
+            reply = None
+        if done.returncode != 0 or not isinstance(reply, dict):
+            detail = (done.stderr or out or "no output").strip()[:300]
+            kind = "agy's quota or rate limit" if QUOTA_WORDS.search(detail) else "agy failed"
+            raise BackendError(f"{kind} (exit {done.returncode}): {detail}")
+        if reply.get("status") != "SUCCESS":
+            detail = str(reply.get("response") or reply.get("error") or reply)[:300]
+            kind = "agy's quota or rate limit" if QUOTA_WORDS.search(detail) else f"agy status {reply.get('status')}"
+            raise BackendError(f"{kind}: {detail}")
+        return reply
+
+    def structured(self, system: str, content: list[dict], output_type: type[T]) -> T:
+        text = request_text(content)
+        if not text.strip():
+            raise BackendError("The agy backend needs text; this document has none (scanned PDF?).")
+        schema = json.dumps(output_type.model_json_schema())
+        prompt = (f"{system}\n\nAnswer with one JSON object matching this schema, and nothing else:\n{schema}"
+                  f"\n\n---\n\n{text}")
+        reply = self._run(prompt, schema)
+        raw = str(reply.get("response") or "").strip()
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)  # a model may fence its JSON anyway
+        try:
+            result = output_type.model_validate_json(raw)
+        except ValueError as e:
+            raise BackendError(f"agy's answer didn't validate: {e}") from e
+        used = reply.get("usage") or {}
+        self.usage.add(int(used.get("input_tokens") or 0), int(used.get("output_tokens") or 0))
+        return result
+
+
 def get_backend(name: str, model: str | None = None) -> Backend:
     if name == "claude":
         return ClaudeBackend(model or CLAUDE_MODEL)
     if name == "local":
         return LocalBackend(model or LOCAL_MODEL)
+    if name == "agy":
+        return AgyBackend(model or AGY_MODEL)
     raise ValueError(f"Unknown backend: {name}")

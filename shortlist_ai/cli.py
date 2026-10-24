@@ -211,7 +211,7 @@ def cmd_eval(args, backend, cache):
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="shortlist", description="Evidence-backed, blind resume shortlisting.")
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--backend", choices=["claude", "local"], default="claude")
+    common.add_argument("--backend", choices=["claude", "local", "agy"], default="claude")
     common.add_argument("--model", help="Override the backend's default model")
     common.add_argument("--out", type=Path, help="Write output to a file instead of stdout")
     common.add_argument("--no-cache", action="store_true", help=f"Don't read/write {DEFAULT_CACHE_DIR}/")
@@ -273,6 +273,8 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     if args.command in ("rank", "jobs") and args.backend == "local":
         args.workers = 1  # one model in memory; parallel calls don't help
+    elif args.command in ("rank", "jobs") and args.backend == "agy":
+        args.workers = min(args.workers, 3)  # each call starts a CLI process on your subscription's quota
     try:
         backend = get_backend(args.backend, args.model)
         cache = Cache(None if args.no_cache else DEFAULT_CACHE_DIR)

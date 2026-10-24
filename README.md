@@ -48,8 +48,10 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
                                     ranked report with evidence + review flags
 ```
 
-- **Two backends.** `claude` (Anthropic API; reads PDFs as pages, so scanned and multi-column
-  resumes work) or `local` (an MLX model on Apple Silicon: nothing leaves your machine).
+- **Three backends.** `claude` (Anthropic API; reads PDFs as pages, so scanned and multi-column
+  resumes work), `local` (an MLX model on Apple Silicon: nothing leaves your machine) or `agy`
+  (Google's Antigravity CLI on your own subscription login, no API key; text only, about 35 s a call,
+  `--model` takes an id from `agy models`, default `claude-sonnet-5-5-medium`).
 - **Structured outputs everywhere.** Every model call returns a schema-validated object
   (API structured outputs, or constrained decoding locally via [Outlines](https://github.com/dottxt-ai/outlines)).
 - **Scoring:** `score = 100 × Σ(weight × credit) / Σ(weight)`, with must-have = 3, nice-to-have = 1,
