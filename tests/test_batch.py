@@ -143,6 +143,16 @@ def test_a_call_the_batch_did_not_answer_fails_and_is_retried_next_run(tmp_path,
     assert retry.run(lambda: ask(retry, "bad")) == "fine now" and len(more.sent) == 1
 
 
+def test_each_round_is_numbered_so_replayed_calls_dont_look_like_a_loop(tmp_path):
+    said = []
+    b = BatchBackend(tmp_path, model="claude-test", client=NS(messages=NS(batches=FakeBatches(echo, 1))), poll=0,
+                     notify=said.append)
+    b.run(lambda: ask(b, ask(b, "a")))
+    rounds = [m for m in said if m.startswith("round")]
+    assert [r.split(":")[0] for r in rounds] == ["round 1", "round 2"]
+    assert "1 new call (the calls before it are answered from disk" in rounds[1]
+
+
 def test_a_round_that_queues_nothing_returns_at_once(tmp_path):
     b, batches = backend(tmp_path, echo)
     assert b.run(lambda: 42) == 42 and batches.sent == {}

@@ -16,6 +16,7 @@ import json
 import threading
 import time
 from collections.abc import Callable
+from itertools import count
 from pathlib import Path
 from typing import TypeVar
 
@@ -72,7 +73,7 @@ class BatchBackend:
 
     def run(self, work: Callable[[], R]) -> R:
         """work() in rounds, sending what each round queued as one batch, until a round queues nothing."""
-        while True:
+        for n in count(1):
             self.pending.clear()
             try:
                 result = work()
@@ -80,6 +81,9 @@ class BatchBackend:
                 result = None
             if not self.pending:
                 return result
+            # work() replays its earlier calls each round, so its own progress lines repeat: say why.
+            self.notify(f"round {n}: {len(self.pending)} new call{'s' * (len(self.pending) != 1)} "
+                        f"(the calls before it are answered from disk, not sent again)")
             self._send(dict(self.pending))
 
     @property
