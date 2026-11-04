@@ -199,6 +199,27 @@ and a skills list, which the scorer's rules say should be partial.
 
 </details>
 
+## Decisions and what failed
+
+- **The score is computed in code.** The model judges each requirement as met, partial or not
+  met, and the weights turn those into a score, so the number can be checked rather than taken
+  from the model.
+- **Hiding the total years did not work, and it was reverted.** Without the total line the model
+  added up unrelated roles itself, for example calling a mechanical engineer's 16 years enough for
+  "3+ years of data engineering". See [A fix that didn't work](#a-fix-that-didnt-work-hiding-the-total-years).
+- **Years are added up in code.** The first version asked yes or no per role and still counted
+  roles that only touch a field. Asking main, touches or no, and counting only main, matched all 29
+  expected verdicts on the third years set.
+- **The scorer fix mostly moved errors.** Too-lenient verdicts fell from a mean of 2.3 to 1.0, but
+  strict ones took their place, and about 1 in 15 verdicts flips from requirement order alone. Held-out
+  sets are committed before each change, and a set that has been looked at is not reused as proof.
+- **Models pad evidence with things that are not quotes.** Eleven of 13 assessments on one real
+  posting had one, which downgraded four correct verdicts. The quote check now sets those aside,
+  and the score went from 35 to 59, though that run also used the new prompt.
+- **Known limit: some changes are unmeasured.** The stricter evidence rules for years and "and"
+  lists have not been run on the eval sets, and the eval set is small (see
+  [Known limitations](#known-limitations)).
+
 ## Editing the prompts
 
 Every prompt lives in [`shortlist_ai/prompts.py`](shortlist_ai/prompts.py), by name:
