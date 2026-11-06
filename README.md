@@ -49,11 +49,11 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
 ```
 
 - **Three backends.** `claude` (Anthropic API; reads PDFs as pages, so scanned and multi-column
-  resumes work), `local` (an MLX model on Apple Silicon: nothing leaves your machine) or `agy`
+  resumes work), `local` (an OpenAI-compatible model server on your machine: nothing leaves it) or `agy`
   (Google's Antigravity CLI on your own subscription login, no API key; text only, about 35 s a call,
   `--model` takes an id from `agy models`, default `claude-sonnet-5-5-medium`).
 - **Structured outputs everywhere.** Every model call returns a schema-validated object
-  (API structured outputs, or constrained decoding locally via [Outlines](https://github.com/dottxt-ai/outlines)).
+  (API structured outputs, or a JSON-schema `response_format` that the local server enforces while decoding).
 - **Scoring:** `score = 100 × Σ(weight × credit) / Σ(weight)`, with must-have = 3, nice-to-have = 1,
   met = 1, partial = 0.5, not met = 0. The extractor marks 1–3 core requirements (the job's central
   skill); a core one not met caps the score at 40, and a core one partly met caps it softly at 65
@@ -82,7 +82,11 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
 git clone https://github.com/vinayvobbili/shortlist-ai && cd shortlist-ai
 python -m venv .venv && source .venv/bin/activate
 pip install -e .                 # Claude backend
-pip install -e ".[local]"        # + local MLX backend (Apple Silicon, Python ≤ 3.13)
+                                 # --backend local: run any OpenAI-compatible server (e.g. `vllm-mlx serve`,
+                                 # `mlx_lm.server`, LM Studio); if it isn't at http://127.0.0.1:8010/v1,
+                                 # set LOCAL_LLM_URL. It holds the model and queues requests, so several
+                                 # programs can share one copy. LOCAL_LLM_TIMEOUT (seconds, default 900)
+                                 # is how long a request may wait for its answer.
 
 export ANTHROPIC_API_KEY=...     # for --backend claude
 

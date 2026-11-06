@@ -3,28 +3,27 @@ instance of a Pydantic model.
 
 - ClaudeBackend: Anthropic API with structured outputs. Reads PDFs as pages, so
   scanned and multi-column resumes work.
-- LocalBackend: an MLX model on Apple Silicon with schema-constrained decoding
-  (Outlines). Nothing leaves the machine. Text only. Processes using it take turns on the
-  GPU (ModelLock), so two programs scoring at once don't run each other out of memory.
+- LocalBackend: one shared OpenAI-compatible model server on this machine (LOCAL_LLM_URL, default
+  http://127.0.0.1:8010/v1; vllm-mlx, mlx_lm.server, LM Studio, ...) with schema-constrained decoding.
+  Nothing leaves the machine. Text only. The server holds the only copy of the model and queues
+  requests from every program, so this backend loads nothing itself.
 - AgyBackend: Google's Antigravity CLI (`agy`) on your own subscription login, no API key. Text only.
   Each call starts the CLI in an empty temporary directory, sandboxed, so its tools find nothing.
 """
 
-import fcntl
 import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
-import time
+import urllib.error
+import urllib.request
 import zlib
-from collections.abc import Callable
-from contextlib import contextmanager
-from functools import lru_cache
-from pathlib import Path
 from typing import Protocol, TypeVar
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
@@ -33,7 +32,8 @@ from .prompts import request_text
 T = TypeVar("T", bound=BaseModel)
 
 CLAUDE_MODEL = "claude-opus-5"
-LOCAL_MODEL = "mlx-community/Qwen3.5-9B-MLX-4bit"
+LOCAL_MODEL = "local-server"  # a label only: the server decides which model answers
+LOCAL_URL = "http://127.0.0.1:8010/v1"
 AGY_MODEL = "claude-sonnet-5-5-medium"  # `agy models` lists the ids
 
 # USD per million tokens (input, output), for cost reporting.
@@ -134,82 +134,6 @@ def _say(msg: str):
     print(f"  {msg}", file=sys.stderr, flush=True)
 
 
-class ModelLock:
-    """One process at a time on the local model, across every program on this machine.
-
-    An exclusive OS file lock (flock) taken for each call, not for the life of the process, so a
-    long-running program that keeps its model loaded doesn't hold the GPU while idle. The holder
-    writes its pid into the file, so a waiting process can say whom it waits for. The OS drops the
-    lock when the holder exits, even if it crashes, so a dead process never blocks the next one.
-
-    The file is ~/.cache/shortlist-ai/local-model.lock unless SHORTLIST_MODEL_LOCK names another.
-    Waiting has no limit unless `timeout` (or SHORTLIST_MODEL_LOCK_TIMEOUT, in seconds) sets one."""
-
-    POLL = 0.5
-
-    def __init__(self, path: Path | None = None, timeout: float | None = None,
-                 notify: Callable[[str], None] | None = None):
-        self.path = Path(path or os.environ.get("SHORTLIST_MODEL_LOCK")
-                         or Path.home() / ".cache" / "shortlist-ai" / "local-model.lock")
-        env_timeout = os.environ.get("SHORTLIST_MODEL_LOCK_TIMEOUT")
-        self.timeout = timeout if timeout is not None else (float(env_timeout) if env_timeout else None)
-        self.notify = notify or _say
-
-    def holder(self) -> str:
-        try:
-            return self.path.read_text().strip() or "unknown"
-        except OSError:
-            return "unknown"
-
-    @contextmanager
-    def held(self):
-        """Wait for the lock, hold it for the `with` block, and always let it go afterwards. Each
-        use opens the file afresh, so threads of one process also take turns."""
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.path, "a+") as f:  # closing the file drops the lock, whatever happens
-            if not self._try(f):
-                self.notify(f"waiting for another process using the local model (pid {self.holder()})")
-                deadline = None if self.timeout is None else time.monotonic() + self.timeout
-                while not self._try(f):
-                    if deadline is not None and time.monotonic() >= deadline:
-                        raise BackendError(f"Gave up after {self.timeout:g}s waiting for the local model "
-                                           f"(held by pid {self.holder()}; lock file {self.path})")
-                    time.sleep(self.POLL)
-            try:
-                f.seek(0)
-                f.truncate()
-                f.write(str(os.getpid()))
-                f.flush()
-                yield
-            finally:
-                f.seek(0)
-                f.truncate()
-                f.flush()
-                fcntl.flock(f, fcntl.LOCK_UN)
-
-    @staticmethod
-    def _try(f) -> bool:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
-        except BlockingIOError:
-            return False
-
-
-def _out_of_gpu_memory(e: BaseException) -> bool:
-    return isinstance(e, RuntimeError) and "insufficient memory" in str(e).lower()
-
-
-def _free_gpu_cache():
-    try:
-        import mlx.core as mx
-    except ImportError:
-        return
-    clear = getattr(mx, "clear_cache", None) or getattr(getattr(mx, "metal", None), "clear_cache", None)
-    if clear:
-        clear()
-
-
 def _looping(raw: str, window: int = 4000) -> bool:
     """True when the output ends in the same stretch of text over and over: a model stuck in a
     loop, which more room won't fix. Repeated text compresses to almost nothing; ordinary JSON
@@ -218,53 +142,104 @@ def _looping(raw: str, window: int = 4000) -> bool:
     return len(tail) == window and len(zlib.compress(tail.encode())) < window * 0.1
 
 
-def _loop_breaker():
+def _loop_breaker() -> dict:
     """Sampling with some randomness, in place of always taking the likeliest token, which is
     what keeps a stuck model repeating."""
-    from mlx_lm.sample_utils import make_sampler
+    return {"temperature": 0.5, "top_p": 0.95}
 
-    return make_sampler(temp=0.5, top_p=0.95)
+
+def _server_message(body: bytes) -> str:
+    """The error text in a server's reply: OpenAI's {"error": {"message": ...}}, or a plain string."""
+    text = body.decode("utf-8", "replace").strip()
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return text[:300]
+    err = data.get("error", data.get("detail", data)) if isinstance(data, dict) else data
+    if isinstance(err, dict):
+        err = err.get("message", err)
+    return str(err)[:300]
 
 
 class LocalBackend:
+    """The shared local model server (OpenAI-compatible, at LOCAL_LLM_URL). It holds the one copy of the model
+    and queues requests from every program, so a call may wait behind others: the read timeout is long
+    (LOCAL_LLM_TIMEOUT seconds, default 900) while connecting gives up fast. `model` is accepted for callers that
+    still pass one; the server decides which model answers."""
     name = "local"
     reads_documents = False
-    OOM_PAUSE = 5.0  # seconds to wait before the one retry after the GPU ran out of memory
+    CONNECT_TIMEOUT = 5.0
 
-    def __init__(self, model: str = LOCAL_MODEL, max_tokens: int = 4096, lock: ModelLock | None = None):
-        self.model = model
+    def __init__(self, model: str = LOCAL_MODEL, max_tokens: int = 4096, timeout: float | None = None):
+        self.model = LOCAL_MODEL
         self.max_tokens = max_tokens
+        self.timeout = timeout if timeout is not None else float(os.environ.get("LOCAL_LLM_TIMEOUT") or 900)
         self.usage = Usage()
-        self.lock = lock or ModelLock()
 
-    def _generate(self, prompt, output_type, budget: int, **options) -> str:
-        """One generation, holding the GPU for its length (the first also loads the model). If the
-        GPU still runs out of memory (something outside shortlist-ai is using it), free what MLX
-        has cached and try once more before failing."""
-        with self.lock.held():
-            try:
-                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget, **options)
-            except RuntimeError as e:
-                if not _out_of_gpu_memory(e):
-                    raise
-                _say(f"the GPU ran out of memory; retrying once in {self.OOM_PAUSE:g}s")
-                _free_gpu_cache()
-                time.sleep(self.OOM_PAUSE)
-                return _load_local_generator(self.model)(prompt, output_type, max_tokens=budget, **options)
+    @property
+    def url(self) -> str:
+        return (os.environ.get("LOCAL_LLM_URL") or LOCAL_URL).rstrip("/")
+
+    def _post(self, body: dict) -> dict:
+        url = f"{self.url}/chat/completions"
+        refused = (f"no local model server at {self.url} "
+                   "(start an OpenAI-compatible server there, or set LOCAL_LLM_URL)")
+        request = urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json"})
+        try:
+            parts = urlsplit(url)
+            # urlopen has one timeout for connecting and reading; probe the connection first so a missing server
+            # fails in seconds while a queued request may take as long as it needs.
+            socket.create_connection((parts.hostname, parts.port or 80), self.CONNECT_TIMEOUT).close()
+            with urllib.request.urlopen(request, timeout=self.timeout) as reply:
+                return json.loads(reply.read())
+        except urllib.error.HTTPError as e:
+            raise BackendError(f"The local model server at {self.url} answered {e.code}: "
+                               f"{_server_message(e.read())}") from e
+        except TimeoutError as e:
+            raise BackendError(f"The local model server at {self.url} didn't answer within "
+                               f"{self.timeout:g}s (timed out)") from e
+        except ConnectionRefusedError as e:
+            raise BackendError(refused) from e
+        except urllib.error.URLError as e:
+            if isinstance(e.reason, ConnectionRefusedError):
+                raise BackendError(refused) from e
+            if isinstance(e.reason, TimeoutError):
+                raise BackendError(f"The local model server at {self.url} timed out") from e
+            raise BackendError(f"Can't reach the local model server at {self.url}: {e.reason}") from e
+        except (OSError, ValueError) as e:
+            raise BackendError(f"The local model server at {self.url} failed: {e}") from e
+
+    def _generate(self, messages: list[dict], output_type, budget: int, **options) -> tuple[str, str | None]:
+        """One request: the reply's text and its finish_reason ("length" means it ran out of tokens)."""
+        reply = self._post({
+            "model": "local",  # the server ignores it and fills in whatever model it runs
+            "messages": messages,
+            "max_tokens": budget,
+            "response_format": {"type": "json_schema", "json_schema": {
+                "name": output_type.__name__, "schema": output_type.model_json_schema(), "strict": True}},
+            **options,
+        })
+        try:
+            choice = reply["choices"][0]
+            text = choice["message"]["content"] or ""
+        except (KeyError, IndexError, TypeError) as e:
+            raise BackendError(f"The local model server at {self.url} sent an unexpected reply: "
+                               f"{str(reply)[:200]}") from e
+        used = reply.get("usage") or {}
+        self.usage.add(int(used.get("prompt_tokens") or 0), int(used.get("completion_tokens") or 0))
+        return text, choice.get("finish_reason")
 
     def structured(self, system: str, content: list[dict], output_type: type[T]) -> T:
-        from outlines.inputs import Chat
-
         text = request_text(content)
         if not text.strip():
             raise BackendError("The local backend needs text; this document has none (scanned PDF?).")
         # Small models follow field descriptions better when they can see them;
-        # the decoder separately guarantees the output matches the schema.
+        # the server's decoder separately guarantees the output matches the schema.
         schema = json.dumps(output_type.model_json_schema())
-        prompt = Chat([
+        messages = [
             {"role": "system", "content": f"{system}\n\nOutput JSON matching this schema:\n{schema}"},
             {"role": "user", "content": text},
-        ])
+        ]
         # A long posting can need more output than the default allows; the decoder stops
         # mid-JSON when it runs out, so try again with room to spare before giving up. A model
         # stuck repeating itself would only repeat itself for longer, so it gets one try with
@@ -272,36 +247,20 @@ class LocalBackend:
         budget = self.max_tokens
         options = {}
         while True:
-            raw = self._generate(prompt, output_type, budget, **options)
+            raw, finish = self._generate(messages, output_type, budget, **options)
             try:
                 return output_type.model_validate_json(raw)
             except ValueError as e:
                 looping = _looping(raw)
                 if looping and not options:
                     _say("the model got stuck repeating itself; trying once more with some randomness")
-                    options = {"sampler": _loop_breaker()}
+                    options = _loop_breaker()
                     continue
-                if looping or budget >= self.max_tokens * 4:
-                    why = "stuck repeating itself" if looping else "likely truncated"
+                if looping or finish == "stop" or budget >= self.max_tokens * 4:
+                    why = ("stuck repeating itself" if looping
+                           else "not the expected JSON" if finish == "stop" else "likely truncated")
                     raise BackendError(f"Local model output didn't validate at {budget} tokens ({why}): {e}") from e
                 budget *= 2
-
-
-@lru_cache(maxsize=1)
-def _load_local_generator(model_name: str):
-    """Loading takes far longer than one generation, so do it once per process."""
-    try:
-        import mlx_lm
-        import outlines
-    except ImportError as e:
-        raise BackendError("The local backend needs extras: pip install 'shortlist-ai[local]'") from e
-
-    model, tokenizer = mlx_lm.load(model_name)
-    # Qwen-style templates open a <think> block by default, which fights the JSON
-    # constraint. Templates that don't use this variable ignore it.
-    if tokenizer.chat_template:
-        tokenizer.chat_template = "{%- set enable_thinking = false %}" + tokenizer.chat_template
-    return outlines.from_mlxlm(model, tokenizer)
 
 
 QUOTA_WORDS = re.compile(r"quota|rate.?limit|usage limit|limit (reached|exceeded)|exhausted|too many requests|\b429\b",

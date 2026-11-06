@@ -29,8 +29,9 @@ Repository = "https://github.com/vinayvobbili/shortlist-ai"
 Issues = "https://github.com/vinayvobbili/shortlist-ai/issues"
 
 [project.optional-dependencies]
-# Local backend: Apple Silicon only. outlines needs Python <= 3.13 until it ships 3.14 wheels.
-local = ["mlx-lm>=0.31", "outlines>=1.3"]
+# The local backend needs no packages: it calls an OpenAI-compatible server. Kept (empty) so
+# `pip install 'shortlist-ai[local]'` in existing instructions still works.
+local = []
 dev = ["pytest>=8", "pymupdf>=1.24", "ruff>=0.14"]
 
 [project.scripts]

@@ -4,10 +4,10 @@ from shortlist_ai.schema import Education, Experience, Link, Resume
 
 
 @pytest.fixture(autouse=True)
-def _model_lock_in_tmp(tmp_path, monkeypatch):
-    """Tests never touch the real local-model lock in ~/.cache, which a running program may hold."""
-    monkeypatch.setenv("SHORTLIST_MODEL_LOCK", str(tmp_path / "local-model.lock"))
-    monkeypatch.delenv("SHORTLIST_MODEL_LOCK_TIMEOUT", raising=False)
+def _no_real_model_server(monkeypatch):
+    """Tests never reach a real local model server: unless one points LOCAL_LLM_URL at a fake, nothing listens."""
+    monkeypatch.setenv("LOCAL_LLM_URL", "http://127.0.0.1:9/v1")
+    monkeypatch.delenv("LOCAL_LLM_TIMEOUT", raising=False)
 
 
 @pytest.fixture
