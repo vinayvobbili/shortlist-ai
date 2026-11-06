@@ -362,9 +362,14 @@ class AgyBackend:
         for attempt in (1, 2):
             reply = self._run(prompt, schema)
             raw = str(reply.get("response") or "").strip()
-            raw = _first_json_object(raw)
+            # agy checks the answer against --json-schema itself: some models (Gemini) leave `response` empty and
+            # give only that
+            parsed = reply.get("structured_output")
+            if not raw and not isinstance(parsed, dict):
+                raise BackendError(f"agy ({self.model}) answered with nothing")
             try:
-                result = output_type.model_validate_json(raw)
+                result = (output_type.model_validate(parsed) if isinstance(parsed, dict)
+                          else output_type.model_validate_json(_first_json_object(raw)))
             except ValueError as e:
                 raise BackendError(f"agy's answer didn't validate: {e}") from e
             used = reply.get("usage") or {}

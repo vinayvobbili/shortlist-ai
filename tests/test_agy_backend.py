@@ -91,6 +91,19 @@ def test_an_answer_with_every_list_empty_gets_one_more_try(monkeypatch, run):
     assert backends.AgyBackend().structured("s", CONTENT, Out).items == []
 
 
+def test_the_answer_agy_checked_against_the_schema_is_used_when_given(run):
+    run(json.dumps({"status": "SUCCESS", "response": "", "structured_output": {"items": ["y"]}}))
+    assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["y"]
+    run(json.dumps({"status": "SUCCESS", "response": '{"items": ["z"]}', "structured_output": {"items": ["y"]}}))
+    assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["y"]
+
+
+def test_an_empty_answer_says_so(run):
+    run(reply(""))
+    with pytest.raises(backends.BackendError, match=r"agy \(gemini-x\) answered with nothing"):
+        backends.AgyBackend("gemini-x").structured("s", CONTENT, Out)
+
+
 def test_text_after_the_json_is_ignored(run):
     run(reply('{"items": ["x"]}\nHope this helps! {not json}'))
     assert backends.AgyBackend().structured("s", CONTENT, Out).items == ["x"]
