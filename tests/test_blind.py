@@ -9,7 +9,7 @@ TODAY = date(2026, 9, 1)
 def test_identity_signals_removed(resume):
     profile = blind_profile(resume, TODAY)
     for leaked in ["Priya", "Raman", "priya.raman@example.com", "555-0142", "linkedin.com",
-                   "Seattle", "Charlotte", "Georgia Tech", "2018", "2022", "Ms."]:
+                   "Seattle", "Austin", "Georgia Tech", "2018", "2022", "Ms."]:
         assert leaked not in profile, leaked
 
 

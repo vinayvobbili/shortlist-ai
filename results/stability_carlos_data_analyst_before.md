@@ -40,5 +40,5 @@ Scored by `local:mlx-community/Qwen3.5-9B-MLX-4bit` with the requirements in 10 
 
 ### `dbt_data_modeling`: Experience with dbt or other data modeling tools
 
-- **✅ met** in orders 1, 2, 3, 4, 5, 6, 7, 9, 10. Evidence: “Own 200+ dbt models on Snowflake”. Reasoning: The candidate has significant hands-on experience owning and managing dbt models, directly satisfying the requirement.
-- **🟡 partial ⚠️ (downgraded: quote not found)** in order 8. Evidence: “Own 200+ dbt models on Snowflake”; “Skills: dbt”. Reasoning: The candidate has extensive hands-on experience owning over 200 dbt models, which directly satisfies the requirement for dbt or other data modeling tools.
+- **✅ met** in orders 1, 2, 3, 4, 5, 6, 7, 9, 10. Evidence: “Own 200+ dbt models on BigQuery”. Reasoning: The candidate has significant hands-on experience owning and managing dbt models, directly satisfying the requirement.
+- **🟡 partial ⚠️ (downgraded: quote not found)** in order 8. Evidence: “Own 200+ dbt models on BigQuery”; “Skills: dbt”. Reasoning: The candidate has extensive hands-on experience owning over 200 dbt models, which directly satisfies the requirement for dbt or other data modeling tools.

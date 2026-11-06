@@ -498,7 +498,7 @@ a borderline candidate: a score that moves between orders is a range, not a poin
 
 Run on Carlos (analytics engineer, graded 3) for Data Analyst, it found the score moving from 58
 to 88, and the cause was mostly in the code, not the model. The model sometimes quoted the skills
-line shortened to the item it needed ("Skills: Python" from "Skills: SQL, dbt, Snowflake, Looker,
+line shortened to the item it needed ("Skills: Python" from "Skills: SQL, dbt, BigQuery, Looker,
 Python, Excel"). That isn't a substring, so the quote check rejected it and downgraded a correct
 verdict; in one order, three of them. The check now also accepts a labeled list with items left
 out, when one profile line has that label and every quoted item as whole words. Made-up items still

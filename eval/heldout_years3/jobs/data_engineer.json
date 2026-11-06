@@ -28,7 +28,7 @@
     },
     {
       "id": "warehouse",
-      "description": "A cloud data warehouse (Snowflake, BigQuery or Redshift)",
+      "description": "A cloud data warehouse (BigQuery, Redshift or Synapse)",
       "kind": "must_have"
     },
     {

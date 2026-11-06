@@ -24,7 +24,7 @@ def resume() -> Resume:
                        start_date="2022-03", end_date=None, is_current=True,
                        highlights=["Built SOAR playbooks in Python that cut triage time by 60%",
                                    "Ms. Raman led her team through 3 ransomware incidents"]),
-            Experience(company="Contoso Bank", title="Security Analyst II", location="Charlotte, NC",
+            Experience(company="Contoso Bank", title="Security Analyst II", location="Austin, TX",
                        start_date="2018-06", end_date="2022-02", is_current=False,
                        highlights=["Tuned Splunk correlation searches; built ASP.NET tooling"]),
         ],
