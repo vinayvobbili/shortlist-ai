@@ -27,6 +27,7 @@ class FakeServer:
 
     def __init__(self):
         self.requests = []
+        self.headers = []
         self.reply = lambda body: (200, completion(FULL))
         outer = self
 
@@ -34,6 +35,7 @@ class FakeServer:
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 outer.requests.append((self.path, body))
+                outer.headers.append(dict(self.headers))
                 status, payload = outer.reply(body)
                 data = json.dumps(payload).encode()
                 self.send_response(status)

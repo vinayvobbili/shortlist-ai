@@ -52,6 +52,8 @@ Resumes ──► extraction (PDF/DOCX/TXT) ──► blind profile ──► ke
   resumes work), `local` (an OpenAI-compatible model server on your machine: nothing leaves it) or `agy`
   (Google's Antigravity CLI on your own subscription login, no API key; text only, about 35 s a call,
   `--model` takes an id from `agy models`, default `claude-sonnet-5-5-medium`).
+  From Python there is also `OpenAIBackend(model, url, api_key)`: any hosted OpenAI-compatible API
+  (a free tier on NVIDIA build, Gemini's OpenAI endpoint, Groq), the local backend's client with a bearer key.
 - **Structured outputs everywhere.** Every model call returns a schema-validated object
   (API structured outputs, or a JSON-schema `response_format` that the local server enforces while decoding).
 - **Scoring:** `score = 100 × Σ(weight × credit) / Σ(weight)`, with must-have = 3, nice-to-have = 1,

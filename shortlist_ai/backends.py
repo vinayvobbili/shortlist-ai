@@ -7,6 +7,8 @@ instance of a Pydantic model.
   http://127.0.0.1:8010/v1; vllm-mlx, mlx_lm.server, LM Studio, ...) with schema-constrained decoding.
   Nothing leaves the machine. Text only. The server holds the only copy of the model and queues
   requests from every program, so this backend loads nothing itself.
+- OpenAIBackend: a hosted OpenAI-compatible API (NVIDIA build, Gemini's OpenAI endpoint, Groq, ...) with a
+  bearer key you pass in; built by the caller (it needs a url and key), not by get_backend. Text only.
 - AgyBackend: Google's Antigravity CLI (`agy`) on your own subscription login, no API key. Text only.
   Each call starts the CLI in an empty temporary directory, sandboxed, so its tools find nothing.
 """
@@ -180,51 +182,67 @@ class LocalBackend:
     def url(self) -> str:
         return (os.environ.get("LOCAL_LLM_URL") or LOCAL_URL).rstrip("/")
 
+    # What the OpenAIBackend below changes: who is named in messages, the request's headers and model, and how an
+    # HTTP error reads.
+    @property
+    def who(self) -> str:
+        return f"The local model server at {self.url}"
+
+    def _headers(self) -> dict:
+        return {"Content-Type": "application/json"}
+
+    def _model_field(self) -> str:
+        return "local"  # the server ignores it and fills in whatever model it runs
+
+    def _response_format(self, output_type) -> dict:
+        return {"response_format": {"type": "json_schema", "json_schema": {
+            "name": output_type.__name__, "schema": output_type.model_json_schema(), "strict": True}}}
+
+    def _http_error(self, e: urllib.error.HTTPError) -> BackendError:
+        return BackendError(f"{self.who} answered {e.code}: {_server_message(e.read())}")
+
     def _post(self, body: dict) -> dict:
         url = f"{self.url}/chat/completions"
         refused = (f"no local model server at {self.url} "
                    "(start an OpenAI-compatible server there, or set LOCAL_LLM_URL)")
-        request = urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json"})
+        request = urllib.request.Request(url, json.dumps(body).encode(), self._headers())
         try:
             parts = urlsplit(url)
             # urlopen has one timeout for connecting and reading; probe the connection first so a missing server
             # fails in seconds while a queued request may take as long as it needs.
-            socket.create_connection((parts.hostname, parts.port or 80), self.CONNECT_TIMEOUT).close()
+            port = parts.port or (443 if parts.scheme == "https" else 80)
+            socket.create_connection((parts.hostname, port), self.CONNECT_TIMEOUT).close()
             with urllib.request.urlopen(request, timeout=self.timeout) as reply:
                 return json.loads(reply.read())
         except urllib.error.HTTPError as e:
-            raise BackendError(f"The local model server at {self.url} answered {e.code}: "
-                               f"{_server_message(e.read())}") from e
+            raise self._http_error(e) from e
         except TimeoutError as e:
-            raise BackendError(f"The local model server at {self.url} didn't answer within "
-                               f"{self.timeout:g}s (timed out)") from e
+            raise BackendError(f"{self.who} didn't answer within {self.timeout:g}s (timed out)") from e
         except ConnectionRefusedError as e:
             raise BackendError(refused) from e
         except urllib.error.URLError as e:
             if isinstance(e.reason, ConnectionRefusedError):
                 raise BackendError(refused) from e
             if isinstance(e.reason, TimeoutError):
-                raise BackendError(f"The local model server at {self.url} timed out") from e
-            raise BackendError(f"Can't reach the local model server at {self.url}: {e.reason}") from e
+                raise BackendError(f"{self.who} timed out") from e
+            raise BackendError(f"Can't reach {self.who}: {e.reason}") from e
         except (OSError, ValueError) as e:
-            raise BackendError(f"The local model server at {self.url} failed: {e}") from e
+            raise BackendError(f"{self.who} failed: {e}") from e
 
     def _generate(self, messages: list[dict], output_type, budget: int, **options) -> tuple[str, str | None]:
         """One request: the reply's text and its finish_reason ("length" means it ran out of tokens)."""
         reply = self._post({
-            "model": "local",  # the server ignores it and fills in whatever model it runs
+            "model": self._model_field(),
             "messages": messages,
             "max_tokens": budget,
-            "response_format": {"type": "json_schema", "json_schema": {
-                "name": output_type.__name__, "schema": output_type.model_json_schema(), "strict": True}},
+            **self._response_format(output_type),
             **options,
         })
         try:
             choice = reply["choices"][0]
             text = choice["message"]["content"] or ""
         except (KeyError, IndexError, TypeError) as e:
-            raise BackendError(f"The local model server at {self.url} sent an unexpected reply: "
-                               f"{str(reply)[:200]}") from e
+            raise BackendError(f"{self.who} sent an unexpected reply: {str(reply)[:200]}") from e
         used = reply.get("usage") or {}
         self.usage.add(int(used.get("prompt_tokens") or 0), int(used.get("completion_tokens") or 0))
         return text, choice.get("finish_reason")
@@ -261,6 +279,59 @@ class LocalBackend:
                            else "not the expected JSON" if finish == "stop" else "likely truncated")
                     raise BackendError(f"Local model output didn't validate at {budget} tokens ({why}): {e}") from e
                 budget *= 2
+
+
+class OpenAIBackend(LocalBackend):
+    """A hosted OpenAI-compatible API (NVIDIA build, Gemini's OpenAI endpoint, Groq, ...): the local backend's client
+    and retries, with `Authorization: Bearer <api_key>`, the model named in each request, and errors that say which
+    provider answered what: a refused key reads "refused the key", so a caller can tell a step that can't score
+    (key, quota, rate limit, a 5xx) from a job it can't. The key goes in the header only, never into a message.
+    response_format: "json_schema" (strict schema-constrained decoding), "json_object" (any JSON; the schema is in
+    the prompt) or "none", for a provider that rejects the first."""
+    name = "openai"
+    CONNECT_TIMEOUT = 10.0
+
+    def __init__(self, model: str, url: str, api_key: str, provider: str = "openai", max_tokens: int = 4096,
+                 timeout: float | None = None, response_format: str = "json_schema"):
+        if response_format not in ("json_schema", "json_object", "none"):
+            raise ValueError(f"response_format is json_schema, json_object or none, got {response_format!r}")
+        super().__init__(max_tokens=max_tokens, timeout=timeout if timeout is not None else 300.0)
+        self.model = model
+        self.base_url = url.rstrip("/")
+        self.api_key = api_key
+        self.provider = provider
+        self.response_format = response_format
+
+    @property
+    def url(self) -> str:
+        return self.base_url
+
+    @property
+    def who(self) -> str:
+        return f"The {self.provider} API at {self.url}"
+
+    def _headers(self) -> dict:
+        return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+
+    def _model_field(self) -> str:
+        return self.model
+
+    def _response_format(self, output_type) -> dict:
+        if self.response_format == "json_schema":
+            return super()._response_format(output_type)
+        return {"response_format": {"type": "json_object"}} if self.response_format == "json_object" else {}
+
+    def _http_error(self, e: urllib.error.HTTPError) -> BackendError:
+        said = _server_message(e.read())
+        if e.code in (401, 403):
+            return BackendError(f"{self.who} refused the key ({e.code}): {said}")
+        return BackendError(f"{self.who} answered {e.code}: {said}")
+
+    def _generate(self, messages: list[dict], output_type, budget: int, **options) -> tuple[str, str | None]:
+        text, finish = super()._generate(messages, output_type, budget, **options)
+        if not text.strip():
+            raise BackendError(f"{self.who} ({self.model}) answered with nothing")
+        return _first_json_object(text), finish  # a model may fence the JSON, or add a line after it
 
 
 QUOTA_WORDS = re.compile(r"quota|rate.?limit|usage limit|limit (reached|exceeded)|exhausted|too many requests|\b429\b",
