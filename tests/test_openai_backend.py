@@ -86,6 +86,105 @@ def test_an_unknown_response_format_is_refused(server):
         make(server, response_format="xml")
 
 
+def reasoning_reply(content, thinking, finish="stop", field="reasoning_content"):
+    reply = completion(content, finish)
+    reply["choices"][0]["message"][field] = thinking
+    return reply
+
+
+@pytest.mark.parametrize("field", ["reasoning_content", "reasoning"])
+def test_an_empty_content_takes_the_json_from_the_thinking(server, field):
+    thinking = f'The schema is {{"items": []}}. So the answer is {FULL}'
+    server.reply = lambda body: (200, reasoning_reply("", thinking, "length", field))
+    assert make(server).structured("sys", POSTING, Out).items == ["a", "b", "c"]
+
+
+def test_content_wins_over_the_thinking(server):
+    server.reply = lambda body: (200, reasoning_reply(FULL, '{"items": ["x"]}'))
+    assert make(server).structured("sys", POSTING, Out).items == ["a", "b", "c"]
+
+
+def test_thinking_that_ran_out_of_room_is_retried_with_more(server):
+    replies = iter([reasoning_reply("", "Let me think about this...", "length"), completion(FULL)])
+    server.reply = lambda body: (200, next(replies))
+    assert make(server, max_tokens=1000).structured("sys", POSTING, Out).items == ["a", "b", "c"]
+    assert [body["max_tokens"] for _, body in server.requests] == [1000, 2000]
+
+
+def test_a_length_finish_with_no_answer_is_a_clear_failure(server):
+    server.reply = lambda body: (200, reasoning_reply("", "Hmm, still thinking...", "length"))
+    with pytest.raises(backends.BackendError, match=r"ran out of output tokens \(finish_reason length\)") as caught:
+        make(server, max_tokens=1000).structured("sys", POSTING, Out)
+    assert "nothing" not in str(caught.value)
+    assert [body["max_tokens"] for _, body in server.requests] == [1000, 2000, 4000]
+
+
+def test_a_stop_with_no_answer_says_nothing_and_the_finish_reason(server):
+    server.reply = lambda body: (200, completion("", "stop"))
+    with pytest.raises(backends.BackendError, match=r"answered with nothing \(finish_reason stop\)"):
+        make(server).structured("sys", POSTING, Out)
+
+
+def test_openrouter_gets_the_reasoning_effort_and_others_do_not(server):
+    make(server).structured("sys", POSTING, Out)
+    assert "reasoning" not in server.requests[0][1]
+    router = backends.OpenAIBackend("acme/m", "https://openrouter.ai/api/v1", KEY, provider="openrouter")
+    assert router._reasoning_options() == {"reasoning": {"effort": "low"}}
+    off = backends.OpenAIBackend("acme/m", "https://openrouter.ai/api/v1", KEY, reasoning_effort=None)
+    assert off._reasoning_options() == {}
+
+
+def waiting(server, **kw):
+    backend = make(server, **kw)
+    backend.slept = []
+    backend.sleep = backend.slept.append
+    return backend
+
+
+def test_a_429_waits_what_retry_after_says_then_succeeds(server):
+    replies = iter([(429, {"error": "slow down"}, {"Retry-After": "7"}), (200, completion(FULL))])
+    server.reply = lambda body: next(replies)
+    backend = waiting(server)
+    assert backend.structured("sys", POSTING, Out).items == ["a", "b", "c"]
+    assert backend.slept == [7.0]
+
+
+def test_a_429_without_retry_after_backs_off_and_gives_up_after_the_retries(server):
+    server.reply = lambda body: (429, {"error": {"message": "Too many requests"}})
+    backend = waiting(server)
+    with pytest.raises(backends.BackendError, match="answered 429: Too many requests") as caught:
+        backend.structured("sys", POSTING, Out)
+    assert backend.slept == [2.0, 4.0, 8.0, 16.0]
+    assert len(server.requests) == 5
+    assert caught.value.status == 429
+
+
+def test_a_429_that_asks_for_a_long_wait_is_not_retried(server):
+    server.reply = lambda body: (429, {"error": "daily limit"}, {"Retry-After": "3600"})
+    backend = waiting(server)
+    with pytest.raises(backends.BackendError, match="answered 429"):
+        backend.structured("sys", POSTING, Out)
+    assert backend.slept == [] and len(server.requests) == 1
+
+
+def test_a_404_is_a_refused_model_and_not_retried(server):
+    server.reply = lambda body: (404, {"detail": "Function 'abc': Not found for account"})
+    backend = waiting(server)
+    with pytest.raises(backends.BackendError, match=r"refused the model acme/test-model \(404\): Function 'abc'"):
+        backend.structured("sys", POSTING, Out)
+    assert len(server.requests) == 1
+
+
+def test_retry_after_can_be_an_http_date():
+    from datetime import datetime, timedelta, timezone
+    from email.utils import format_datetime
+
+    soon = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=30), usegmt=True)
+    assert 25 < backends._retry_after({"Retry-After": soon}) <= 30
+    assert backends._retry_after({"Retry-After": "garbage"}) is None
+    assert backends._retry_after({}) is None
+
+
 def test_the_local_backend_still_sends_no_key(server, monkeypatch):
     monkeypatch.setenv("LOCAL_LLM_URL", server.url)
     backends.LocalBackend(max_tokens=1000).structured("sys", POSTING, Out)

@@ -7,7 +7,7 @@ instance of a Pydantic model.
   http://127.0.0.1:8010/v1; vllm-mlx, mlx_lm.server, LM Studio, ...) with schema-constrained decoding.
   Nothing leaves the machine. Text only. The server holds the only copy of the model and queues
   requests from every program, so this backend loads nothing itself.
-- OpenAIBackend: a hosted OpenAI-compatible API (NVIDIA build, Gemini's OpenAI endpoint, Groq, ...) with a
+- OpenAIBackend: a hosted OpenAI-compatible API (OpenRouter, Gemini's OpenAI endpoint, Groq, ...) with a
   bearer key you pass in; built by the caller (it needs a url and key), not by get_backend. Text only.
 - AgyBackend: Google's Antigravity CLI (`agy`) on your own subscription login, no API key. Text only.
   Each call starts the CLI in an empty temporary directory, sandboxed, so its tools find nothing.
@@ -21,9 +21,11 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 import zlib
+from email.utils import parsedate_to_datetime
 from typing import Protocol, TypeVar
 from urllib.parse import urlsplit
 
@@ -52,7 +54,13 @@ def cached_system(system: str) -> list[dict]:
 
 
 class BackendError(RuntimeError):
-    pass
+    """A backend that can't answer. For an HTTP error, `status` is the code and `retry_after` the seconds the server
+    asked to wait (its Retry-After header), when it sent one."""
+
+    def __init__(self, message: str = "", status: int | None = None, retry_after: float | None = None):
+        super().__init__(message)
+        self.status = status
+        self.retry_after = retry_after
 
 
 class Deferred(Exception):
@@ -163,6 +171,34 @@ def _server_message(body: bytes) -> str:
     return str(err)[:300]
 
 
+def _retry_after(headers) -> float | None:
+    """Seconds a Retry-After header asks to wait (a number of seconds, or an HTTP date), or None."""
+    value = (headers.get("Retry-After") if headers else None) or ""
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    try:
+        return max(0.0, parsedate_to_datetime(value).timestamp() - time.time())
+    except (TypeError, ValueError):
+        return None
+
+
+def _last_json_object(text: str) -> str:
+    """The last JSON object in a reasoning model's thinking, where it writes out its answer, or ''."""
+    decoder, found, pos = json.JSONDecoder(), "", text.find("{")
+    while pos >= 0:
+        try:
+            obj, end = decoder.raw_decode(text, pos)
+        except ValueError:
+            pos = text.find("{", pos + 1)
+            continue
+        if isinstance(obj, dict) and obj:
+            found = text[pos:end]
+        pos = text.find("{", end)
+    return found
+
+
 class LocalBackend:
     """The shared local model server (OpenAI-compatible, at LOCAL_LLM_URL). It holds the one copy of the model
     and queues requests from every program, so a call may wait behind others: the read timeout is long
@@ -199,7 +235,15 @@ class LocalBackend:
             "name": output_type.__name__, "schema": output_type.model_json_schema(), "strict": True}}}
 
     def _http_error(self, e: urllib.error.HTTPError) -> BackendError:
-        return BackendError(f"{self.who} answered {e.code}: {_server_message(e.read())}")
+        return BackendError(f"{self.who} answered {e.code}: {_server_message(e.read())}", status=e.code,
+                            retry_after=_retry_after(e.headers))
+
+    @property
+    def label(self) -> str:
+        return "Local model"
+
+    def _content(self, message: dict) -> str:
+        return message["content"] or ""
 
     def _post(self, body: dict) -> dict:
         url = f"{self.url}/chat/completions"
@@ -240,7 +284,7 @@ class LocalBackend:
         })
         try:
             choice = reply["choices"][0]
-            text = choice["message"]["content"] or ""
+            text = self._content(choice["message"])
         except (KeyError, IndexError, TypeError) as e:
             raise BackendError(f"{self.who} sent an unexpected reply: {str(reply)[:200]}") from e
         used = reply.get("usage") or {}
@@ -276,13 +320,15 @@ class LocalBackend:
                     continue
                 if looping or finish == "stop" or budget >= self.max_tokens * 4:
                     why = ("stuck repeating itself" if looping
-                           else "not the expected JSON" if finish == "stop" else "likely truncated")
-                    raise BackendError(f"Local model output didn't validate at {budget} tokens ({why}): {e}") from e
+                           else "not the expected JSON" if finish == "stop"
+                           else "ran out of output tokens (finish_reason length) before answering" if not raw.strip()
+                           else "likely truncated")
+                    raise BackendError(f"{self.label} output didn't validate at {budget} tokens ({why}): {e}") from e
                 budget *= 2
 
 
 class OpenAIBackend(LocalBackend):
-    """A hosted OpenAI-compatible API (NVIDIA build, Gemini's OpenAI endpoint, Groq, ...): the local backend's client
+    """A hosted OpenAI-compatible API (OpenRouter, Gemini's OpenAI endpoint, Groq, ...): the local backend's client
     and retries, with `Authorization: Bearer <api_key>`, the model named in each request, and errors that say which
     provider answered what: a refused key reads "refused the key", so a caller can tell a step that can't score
     (key, quota, rate limit, a 5xx) from a job it can't. The key goes in the header only, never into a message.
@@ -290,9 +336,16 @@ class OpenAIBackend(LocalBackend):
     the prompt) or "none", for a provider that rejects the first."""
     name = "openai"
     CONNECT_TIMEOUT = 10.0
+    # A reasoning model spends output tokens thinking before it writes the answer, so the room starts large (and the
+    # retry on a cut-off answer doubles it twice). Hosted APIs rate-limit hard: a 429 or 503 waits what Retry-After
+    # says (else 2, 4, 8, 16 seconds), up to RETRIES times; a wait over MAX_WAIT is a limit that won't lift soon
+    # (a day's quota), so the call gives up at once.
+    RETRIES = 4
+    MAX_WAIT = 60.0
 
-    def __init__(self, model: str, url: str, api_key: str, provider: str = "openai", max_tokens: int = 4096,
-                 timeout: float | None = None, response_format: str = "json_schema"):
+    def __init__(self, model: str, url: str, api_key: str, provider: str = "openai", max_tokens: int = 8192,
+                 timeout: float | None = None, response_format: str = "json_schema",
+                 reasoning_effort: str | None = "low"):
         if response_format not in ("json_schema", "json_object", "none"):
             raise ValueError(f"response_format is json_schema, json_object or none, got {response_format!r}")
         super().__init__(max_tokens=max_tokens, timeout=timeout if timeout is not None else 300.0)
@@ -301,6 +354,8 @@ class OpenAIBackend(LocalBackend):
         self.api_key = api_key
         self.provider = provider
         self.response_format = response_format
+        self.reasoning_effort = reasoning_effort
+        self.sleep = time.sleep
 
     @property
     def url(self) -> str:
@@ -309,6 +364,41 @@ class OpenAIBackend(LocalBackend):
     @property
     def who(self) -> str:
         return f"The {self.provider} API at {self.url}"
+
+    @property
+    def label(self) -> str:
+        return f"The {self.provider} model {self.model}'s"
+
+    def _reasoning_options(self) -> dict:
+        """The provider's own control for how long a reasoning model thinks, where one is known: OpenRouter's
+        `reasoning` object (it passes it on to the model, or drops it for one that doesn't think). Others reject
+        fields they don't know, so they get none."""
+        if self.reasoning_effort and urlsplit(self.url).hostname == "openrouter.ai":
+            return {"reasoning": {"effort": self.reasoning_effort}}
+        return {}
+
+    def _content(self, message: dict) -> str:
+        """The answer: `content`, or, when a reasoning model left it empty, the last JSON object in its thinking
+        (`reasoning_content` or `reasoning`), where it wrote the answer out before running out of room."""
+        if (content := message.get("content") or "").strip():
+            return content
+        for field in ("reasoning_content", "reasoning"):
+            if isinstance(message.get(field), str) and (found := _last_json_object(message[field])):
+                return found
+        return ""
+
+    def _post(self, body: dict) -> dict:
+        for attempt in range(self.RETRIES + 1):
+            try:
+                return super()._post(body)
+            except BackendError as e:
+                if e.status not in (429, 503) or attempt == self.RETRIES:
+                    raise
+                wait = e.retry_after if e.retry_after is not None else 2.0 * 2 ** attempt
+                if wait > self.MAX_WAIT:
+                    raise
+                _say(f"{self.provider} said {e.status}; waiting {wait:.0f}s (try {attempt + 2} of {self.RETRIES + 1})")
+                self.sleep(wait)
 
     def _headers(self) -> dict:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
@@ -324,13 +414,16 @@ class OpenAIBackend(LocalBackend):
     def _http_error(self, e: urllib.error.HTTPError) -> BackendError:
         said = _server_message(e.read())
         if e.code in (401, 403):
-            return BackendError(f"{self.who} refused the key ({e.code}): {said}")
-        return BackendError(f"{self.who} answered {e.code}: {said}")
+            return BackendError(f"{self.who} refused the key ({e.code}): {said}", status=e.code)
+        if e.code == 404:  # a model in the catalog that the API no longer serves ("Function ... Not found")
+            return BackendError(f"{self.who} refused the model {self.model} ({e.code}): {said}", status=e.code)
+        return BackendError(f"{self.who} answered {e.code}: {said}", status=e.code,
+                            retry_after=_retry_after(e.headers))
 
     def _generate(self, messages: list[dict], output_type, budget: int, **options) -> tuple[str, str | None]:
-        text, finish = super()._generate(messages, output_type, budget, **options)
-        if not text.strip():
-            raise BackendError(f"{self.who} ({self.model}) answered with nothing")
+        text, finish = super()._generate(messages, output_type, budget, **{**self._reasoning_options(), **options})
+        if not text.strip() and finish != "length":  # "length" is the caller's to retry with more room
+            raise BackendError(f"{self.who} ({self.model}) answered with nothing (finish_reason {finish})")
         return _first_json_object(text), finish  # a model may fence the JSON, or add a line after it
 
 

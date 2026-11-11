@@ -36,9 +36,11 @@ class FakeServer:
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 outer.requests.append((self.path, body))
                 outer.headers.append(dict(self.headers))
-                status, payload = outer.reply(body)
+                status, payload, *extra = outer.reply(body)  # extra: one dict of response headers
                 data = json.dumps(payload).encode()
                 self.send_response(status)
+                for name, value in (extra[0] if extra else {}).items():
+                    self.send_header(name, value)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
