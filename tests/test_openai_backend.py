@@ -167,6 +167,22 @@ def test_a_429_that_asks_for_a_long_wait_is_not_retried(server):
     assert backend.slept == [] and len(server.requests) == 1
 
 
+def test_a_402_that_names_what_the_key_can_afford_is_asked_again_for_that(server):
+    said = ("This request requires more credits, or fewer max_tokens. "
+            "You requested up to 8192 tokens, but can only afford 7835.")
+    replies = iter([(402, {"error": {"message": said}}), (200, completion(FULL))])
+    server.reply = lambda body: next(replies)
+    assert make(server, max_tokens=8192).structured("sys", POSTING, Out).items == ["a", "b", "c"]
+    assert [body["max_tokens"] for _, body in server.requests] == [8192, 7835]
+
+
+def test_a_402_for_anything_else_fails(server):
+    server.reply = lambda body: (402, {"error": {"message": "Insufficient credits"}})
+    with pytest.raises(backends.BackendError, match="answered 402: Insufficient credits"):
+        make(server).structured("sys", POSTING, Out)
+    assert len(server.requests) == 1
+
+
 def test_a_404_is_a_refused_model_and_not_retried(server):
     server.reply = lambda body: (404, {"detail": "Function 'abc': Not found for account"})
     backend = waiting(server)

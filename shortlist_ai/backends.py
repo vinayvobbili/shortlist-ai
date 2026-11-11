@@ -392,6 +392,10 @@ class OpenAIBackend(LocalBackend):
             try:
                 return super()._post(body)
             except BackendError as e:
+                # A key with a spending limit can't reserve the room asked for ("can only afford 7835"): ask for that.
+                if e.status == 402 and (afford := AFFORD.search(str(e))) and int(afford[1]) < body["max_tokens"]:
+                    body = {**body, "max_tokens": int(afford[1])}
+                    continue
                 if e.status not in (429, 503) or attempt == self.RETRIES:
                     raise
                 wait = e.retry_after if e.retry_after is not None else 2.0 * 2 ** attempt
@@ -427,7 +431,9 @@ class OpenAIBackend(LocalBackend):
         return _first_json_object(text), finish  # a model may fence the JSON, or add a line after it
 
 
-QUOTA_WORDS = re.compile(r"quota|rate.?limit|usage limit|limit (reached|exceeded)|exhausted|too many requests|\b429\b",
+AFFORD = re.compile(r"can only afford (\d+)", re.IGNORECASE)
+
+QUOTA_WORDS =re.compile(r"quota|rate.?limit|usage limit|limit (reached|exceeded)|exhausted|too many requests|\b429\b",
                          re.IGNORECASE)
 
 
