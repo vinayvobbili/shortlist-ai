@@ -158,6 +158,17 @@ def _loop_breaker() -> dict:
     return {"temperature": 0.5, "top_p": 0.95}
 
 
+# A model that writes a comma after the last item of a list (gemma-4 does, in a resume's highlights) can't close the
+# list under the server's decoder, which allows no trailing comma: it adds item after item until it runs out of
+# output tokens, ten minutes on a laptop. Saying so in the prompt makes it close the list.
+STRICT_JSON = "Write strict JSON: no comma after the last item of a list or object."
+
+
+def _rejected_answer(e: "BackendError") -> bool:
+    """True for the model server's 422 saying the answer it generated failed the response_format check."""
+    return e.status == 422 and bool(re.search(r"JSON Schema validation failed|extract valid JSON", str(e)))
+
+
 def _server_message(body: bytes) -> str:
     """The error text in a server's reply: OpenAI's {"error": {"message": ...}}, or a plain string."""
     text = body.decode("utf-8", "replace").strip()
@@ -299,7 +310,7 @@ class LocalBackend:
         # the server's decoder separately guarantees the output matches the schema.
         schema = json.dumps(output_type.model_json_schema())
         messages = [
-            {"role": "system", "content": f"{system}\n\nOutput JSON matching this schema:\n{schema}"},
+            {"role": "system", "content": f"{system}\n\nOutput JSON matching this schema:\n{schema}\n\n{STRICT_JSON}"},
             {"role": "user", "content": text},
         ]
         # A long posting can need more output than the default allows; the decoder stops
@@ -309,7 +320,22 @@ class LocalBackend:
         budget = self.max_tokens
         options = {}
         while True:
-            raw, finish = self._generate(messages, output_type, budget, **options)
+            try:
+                raw, finish = self._generate(messages, output_type, budget, **options)
+            except BackendError as e:
+                # vllm-mlx checks the answer against the schema before replying. One that ran to max_tokens is
+                # mended into some inner object, fails that check and comes back as a 422 with no text, so the
+                # checks below never see it. What runs to the limit under the decoder is a model that can't close
+                # a list (see STRICT_JSON): more room would only repeat it for longer, so it gets one try with
+                # some randomness, like a model seen repeating itself.
+                if not _rejected_answer(e):
+                    raise
+                if options:
+                    raise BackendError(f"{self.label} output didn't validate at {budget} tokens "
+                                       f"(the server rejected it twice, likely stuck): {e}", status=e.status) from e
+                _say("the server rejected an answer that ran to the limit; trying once more with some randomness")
+                options = _loop_breaker()
+                continue
             try:
                 return output_type.model_validate_json(raw)
             except ValueError as e:

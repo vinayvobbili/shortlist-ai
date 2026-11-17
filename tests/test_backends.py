@@ -81,6 +81,15 @@ def test_structured_request_carries_the_schema_and_the_reply_is_parsed(server):
     assert "temperature" not in body
 
 
+def test_the_prompt_asks_for_strict_json_so_the_model_can_close_its_lists(server):
+    # gemma-4 writes a comma after a list's last item; the server's decoder forbids it, so the model keeps adding
+    # items until it runs out of tokens. Telling it not to makes it close the list.
+    backends.LocalBackend(max_tokens=1000).structured("Read the resume.", POSTING, Out)
+    system = server.requests[0][1]["messages"][0]["content"]
+    assert system.startswith("Read the resume.")
+    assert system.endswith("no comma after the last item of a list or object.")
+
+
 def test_the_model_argument_is_not_sent_to_the_server(server):
     backend = backends.LocalBackend(model="some-other-model", max_tokens=1000)
     backend.structured("sys", POSTING, Out)
@@ -122,6 +131,35 @@ def test_a_model_still_stuck_fails_at_once_and_says_why(server):
     with pytest.raises(backends.BackendError, match="stuck repeating itself"):
         backends.LocalBackend(max_tokens=1000).structured("sys", POSTING, Out)
     assert len(server.requests) == 2
+
+
+REJECTED = {"detail": {"error": "invalid_response_format_output",
+                       "message": "JSON Schema validation failed: 'items' is a required property"}}
+
+
+def test_an_answer_the_server_rejects_gets_one_try_with_randomness(server):
+    # vllm-mlx answers 422 (no text, no finish_reason) when an answer that ran to max_tokens fails its schema check.
+    server.reply = lambda body: (200, completion(FULL)) if "temperature" in body else (422, REJECTED)
+    out = backends.LocalBackend(max_tokens=1000).structured("sys", POSTING, Out)
+    first, second = (b for _, b in server.requests)
+    assert out.items == ["a", "b", "c"]
+    assert "temperature" not in first and second["temperature"] == 0.5
+    assert first["max_tokens"] == second["max_tokens"] == 1000  # more room wouldn't help a model that can't stop
+
+
+def test_an_answer_the_server_rejects_twice_fails_and_says_why(server):
+    server.reply = lambda body: (422, REJECTED)
+    with pytest.raises(backends.BackendError, match=r"rejected it twice.*'items' is a required") as caught:
+        backends.LocalBackend(max_tokens=1000).structured("sys", POSTING, Out)
+    assert caught.value.status == 422
+    assert len(server.requests) == 2
+
+
+def test_a_422_about_something_else_is_not_retried(server):
+    server.reply = lambda body: (422, {"detail": "messages: field required"})
+    with pytest.raises(backends.BackendError, match=r"422.*messages: field required"):
+        backends.LocalBackend(max_tokens=1000).structured("sys", POSTING, Out)
+    assert len(server.requests) == 1
 
 
 def test_a_503_raises_with_the_servers_message(server):
